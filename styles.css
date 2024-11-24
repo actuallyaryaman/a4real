@@ -1,0 +1,87 @@
+/* Font Face Definitions */
+@font-face {
+    font-family: 'Space Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(/fonts/space-mono-v11-latin-regular.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Space Mono';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url(/fonts/space-mono-v11-latin-700.woff2) format('woff2');
+  }
+  
+  /* Variables */
+  :root {
+    --main-background: #111111 url(/assets/grid-dark.svg);
+    --text-color: #888888;
+    --text-contrast-color: #ffffff;
+    --link-color: #3FFFFC;
+    --link-hover-color: #111111;
+    --link-bg-color: yellow;
+    --title-color: #eaeaea;
+    --subtitle-color: #44FB70;
+  }
+  
+  /* Global Styles */
+  html, body, #__next {
+    height: 100%;
+    margin: 0;
+    font-family: 'Space Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+    background: var(--main-background);
+    color: var(--text-color);
+  }
+  
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+  }
+  
+  .icon svg {
+    margin: 3rem auto;
+  }
+  
+  .title {
+    font-size: 2rem;
+    color: var(--title-color);
+    margin: 0;
+  }
+  
+  .subtitle {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--subtitle-color);
+    letter-spacing: 1.75px;
+    text-transform: uppercase;
+    margin: 1rem 0;
+  }
+  
+  .description {
+    margin: 3em 0;
+  }
+  
+  .follow {
+    margin: 3em 0;
+    color: var(--text-contrast-color);
+  }
+  
+  a {
+    color: var(--link-color);
+    text-decoration: none;
+    font-weight: bold;
+    position: relative;
+  }
+  
+  a:hover {
+    color: var(--link-hover-color);
+  }
+  
