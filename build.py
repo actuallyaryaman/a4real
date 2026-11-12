@@ -1,9 +1,15 @@
 """Static portfolio + Markdown blog builder. Run: python3 build.py."""
-import hashlib, html, json, re, shutil
+import hashlib, html, json, re, shutil, tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 from blog_engine import load_posts
 ROOT=Path(__file__).parent
+def write_atomic(path, text):
+    with tempfile.NamedTemporaryFile(mode='w',encoding='utf-8',dir=path.parent,delete=False) as temporary:
+        temporary.write(text)
+        temporary_path=Path(temporary.name)
+    temporary_path.chmod(0o644)
+    temporary_path.replace(path)
 c=json.loads((ROOT/'content.json').read_text())
 posts,warnings=load_posts(ROOT)
 def e(value):return html.escape(str(value),quote=True)
@@ -25,7 +31,9 @@ def a(label,url,cls='text-link'):
 def version(path):return hashlib.sha256((ROOT/path).read_bytes()).hexdigest()[:12]
 # Version both stylesheets and the imported palette, avoiding stale theme caches.
 css=ROOT/'styles.css'
-css.write_text(re.sub(r"@import url\('tokens\.css(?:\?v=[^']*)?'\);",f"@import url('tokens.css?v={version('tokens.css')}');",css.read_text()))
+stylesheet=css.read_text()
+versioned_stylesheet=re.sub(r"@import url\('tokens\.css(?:\?v=[^']*)?'\);",f"@import url('tokens.css?v={version('tokens.css')}');",stylesheet)
+if versioned_stylesheet!=stylesheet:write_atomic(css,versioned_stylesheet)
 resume=local_or_url(c['resume'])
 email=c['email']
 if email and ('@' not in email or any(ch in email for ch in '\n\r?')):raise ValueError('Invalid email')
@@ -74,10 +82,15 @@ def page_intro(title,intro):
     return f'<header class="wrap document-intro"><h1>{e(title)}</h1><p>{e(intro)}</p></header>'
 
 h=c['home']
-hero=f'''<section class="wrap welcome" aria-labelledby="name"><div class="welcome-copy"><p class="hello-note">{e(c['heroNote'])}</p><h1 id="name">{e(h['greetingLines'][0])}<br><span>{e(h['greetingLines'][1])}</span></h1><p class="welcome-intro">{e(c['intro'])}</p><p class="hero-detail">{e(h["heroDetail"])}</p><div class="lead-actions">{a(h['workLabel'],'projects.html','text-link primary-link')}{a(h['resumeLabel'],resume)}</div></div><aside class="side-note"><p class="small-label">{e(h['sideHeading'])}</p><div class="record-mark" aria-hidden="true"><span></span></div><h2>{e(h['sideText'])}</h2><p class="record-caption">{e(h['sideDescription'])}</p>'''+''.join(f'<a href="{e(local_or_url(link["url"]))}"><strong>{e(link["title"])}</strong><span>{e(link["description"])}</span><b aria-hidden="true">→</b></a>' for link in h['sideLinks'])+'</aside></section>'
-hero,playlist_note=hero.split('<aside class="side-note">',1)
-hero+='</section>'
-playlist_note='<aside class="side-note">'+playlist_note.rsplit('</section>',1)[0]
+music=c.get('music',{})
+worker_url=music.get('workerUrl','').rstrip('/')
+if worker_url:
+    parsed=urlparse(worker_url)
+    if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('','/'):
+        raise ValueError('music.workerUrl must be an HTTPS origin without a path or credentials')
+music_endpoint=worker_url+'/api/now-playing' if worker_url else ''
+hero=f'''<section class="wrap welcome" aria-labelledby="name"><div class="welcome-copy"><p class="hello-note">{e(c['heroNote'])}</p><h1 id="name">{e(h['greetingLines'][0])}<br><span>{e(h['greetingLines'][1])}</span></h1><p class="welcome-intro">{e(c['intro'])}</p><div class="lead-actions">{a(h['workLabel'],'projects.html','text-link primary-link')}{a(h['resumeLabel'],resume)}</div></div></section>'''
+playlist_note=f'''<aside class="music-card" aria-labelledby="music-heading" data-music data-endpoint="{e(music_endpoint)}" data-state="unavailable"><header class="music-header"><h2 id="music-heading">{e(music.get('heading','On rotation'))}</h2><span class="music-indicator" aria-hidden="true"></span></header><div class="music-cover"><svg class="music-placeholder" viewBox="0 0 160 160" aria-hidden="true"><path d="M27 111V63h22v48m20 21V29h22v103m20-42V70h22v20" fill="currentColor"/><path d="M8 8h144v144H8z" fill="none" stroke="currentColor" stroke-width="1"/></svg><a data-music-art-link hidden aria-label="View artwork source"><img data-music-art width="196" height="196" alt="" hidden referrerpolicy="no-referrer" decoding="async"></a></div><div class="music-info"><p class="music-status" data-music-status>Listening unavailable</p><h3 class="music-title"><a data-music-track hidden></a><span data-music-fallback>Between tracks.</span></h3><p class="music-artist" data-music-artist>Music, across devices.</p><p class="music-album" data-music-album></p></div><p class="music-note" data-music-note aria-live="polite" aria-atomic="true">Listening activity via Last.fm.</p><div class="music-links"><a data-music-profile hidden>Last.fm <span aria-hidden="true">↗</span></a>{a('My playlists','blog-playlist.html')}</div><noscript><p class="music-noscript">Enable JavaScript for listening updates.</p></noscript></aside>'''
 selected=[next(p for p in c['projects'] if p['id']==id) for id in h['selectedIds']]
 work_home='<section class="wrap editorial-section home-work"><div class="section-title"><h2>'+e(h['selectedHeading'])+'</h2>'+a('All projects','projects.html')+'</div><div class="work-links">'+''.join(f'<article class="work-{e(p["id"])}">{project_preview(p)}<div class="work-copy"><p class="small-label">{e(p["category"])} · {e(p["status"])}</p><h3><a href="projects.html#{e(p["id"])}">{e(p["title"])}</a></h3><p>{e(p["summary"])}</p><p class="home-role">{e(p.get("roleSummary",p["context"]))}</p>{project_actions(p,home=True)}</div></article>' for p in selected)+'</div><div class="work-footnote"><span>'+e(h['workFootnote'])+'</span><div class="link-rail">'+''.join(a(x['label'],x['url']) for x in h['workLinks'])+'</div></div></section>'
 
@@ -141,12 +154,13 @@ for filename,(label,body,description) in pages.items():
     preview=(c['siteUrl'].rstrip('/')+'/' if c.get('siteUrl') else '')+'assets/social-preview.png'
     nav=''.join(f'<a href="{href}"'+(' aria-current="page"' if href==filename or (href=='blog.html' and (filename.startswith('blog-') or filename.startswith('writing-'))) else '')+f'>{text}</a>' for href,text in [('index.html','Home'),('projects.html','Projects'),('blog.html','Writing'),('about.html','About'),('resume.html','Resume')])
     display_font='plex-400'
+    music_assets=(f'<link rel="stylesheet" href="assets/music.css?v={version("assets/music.css")}"><script type="module" src="assets/music.js?v={version("assets/music.js")}"></script>' if filename=='index.html' else '')
     page=f'''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(title)}</title><meta name="description" content="{e(description)}"><meta name="theme-color" content="#120f0c"><meta property="og:type" content="{'article' if filename.startswith('blog-') else 'website'}"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:image" content="{e(preview)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Aryaman Srivastava — Systems &amp; Security"><meta name="twitter:card" content="summary_large_image">{canonical}<link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="preload" href="assets/fonts/{display_font}.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="styles.css?v={version('styles.css')}"><link rel="stylesheet" href="editorial.css?v={version('editorial.css')}"><link rel="stylesheet" href="fonts.css?v={version('fonts.css')}"></head><body id="top"><a class="skip" href="#main">Skip to content</a><header class="wrap masthead"><a class="author-mark" href="index.html">Aryaman Srivastava<span aria-hidden="true">.</span></a><nav aria-label="Main navigation">{nav}</nav></header><main id="main" tabindex="-1">{body}</main><footer class="wrap site-footer"><div class="footer-contact"><h2>{e(c['contactHeading'])}</h2>{a(email,'mailto:'+email,'footer-email')}<div class="link-rail">{''.join(a(p['label'],p['url']) for p in c['profileLinks'])}</div></div><div class="footer-bottom"><span>{e(c['name'])}<br><span class="footer-note">MSc Cyber Security · NTU Singapore</span></span><a href="#top">Back to top ↑</a></div></footer></body></html>'''
-    (ROOT/filename).write_text(page);(out/filename).write_text(page)
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(title)}</title><meta name="description" content="{e(description)}"><meta name="theme-color" content="#120f0c"><meta property="og:type" content="{'article' if filename.startswith('blog-') else 'website'}"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(description)}"><meta property="og:image" content="{e(preview)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Aryaman Srivastava — Systems &amp; Security"><meta name="twitter:card" content="summary_large_image">{canonical}<link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="preload" href="assets/fonts/{display_font}.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="styles.css?v={version('styles.css')}"><link rel="stylesheet" href="editorial.css?v={version('editorial.css')}"><link rel="stylesheet" href="fonts.css?v={version('fonts.css')}">{music_assets}</head><body id="top"><a class="skip" href="#main">Skip to content</a><header class="wrap masthead"><a class="author-mark" href="index.html">Aryaman Srivastava<span aria-hidden="true">.</span></a><nav aria-label="Main navigation">{nav}</nav></header><main id="main" tabindex="-1">{body}</main><footer class="wrap site-footer"><div class="footer-contact"><h2>{e(c['contactHeading'])}</h2>{a(email,'mailto:'+email,'footer-email')}<div class="link-rail">{''.join(a(p['label'],p['url']) for p in c['profileLinks'])}</div></div><div class="footer-bottom"><span>{e(c['name'])}<br><span class="footer-note">MSc Cyber Security · NTU Singapore</span></span><a href="#top">Back to top ↑</a></div></footer></body></html>'''
+    write_atomic(ROOT/filename,page);write_atomic(out/filename,page)
 for path in ['styles.css','tokens.css','editorial.css','fonts.css']:shutil.copy2(ROOT/path,out/path)
 shutil.copytree(ROOT/'assets',out/'assets',dirs_exist_ok=True)
 manifest={'pages':list(pages),'posts':[{'slug':p['slug'],'source':p['source'],'title':p['title']} for p in posts],'warnings':warnings}
-(ROOT/'build-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+write_atomic(ROOT/'build-manifest.json',json.dumps(manifest,indent=2)+'\n')
 print(f'Built {len(pages)} static pages, including {len(posts)} Markdown posts.')
 for warning in warnings:print('NOTE:',warning)

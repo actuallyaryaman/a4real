@@ -57,8 +57,8 @@ if (!playwright) throw new Error('Playwright unavailable. Install it locally wit
           throw new Error(`${width} ${file}: ${JSON.stringify(measurements)}`);
         if (file === 'index.html') {
           for(const href of ['https://trace.a4real.org/','https://zk.a4real.org/']) if(!(await page.locator(`.work-copy a[href="${href}"]`).count()))throw new Error('Missing direct homepage demo: '+href);
-          const order=await page.evaluate(()=>({work:document.querySelector('.home-work').getBoundingClientRect().bottom,note:document.querySelector('.side-note').getBoundingClientRect().top}));
-          if(width<=700 && order.note<order.work)throw new Error('Playlist precedes work on mobile');
+          const order=await page.evaluate(()=>({work:document.querySelector('.home-work').getBoundingClientRect().bottom,note:document.querySelector('.music-card').getBoundingClientRect().top}));
+          if(width<=700 && order.note<order.work)throw new Error('Music precedes work on mobile');
         }
         if (file === 'projects.html') {
           const bodySize=await page.locator('.case-trace .project-prose').evaluate(e=>getComputedStyle(e).fontSize);
@@ -67,7 +67,7 @@ if (!playwright) throw new Error('Playwright unavailable. Install it locally wit
             if (!(await page.locator(`main a[href="${href}"]`).count())) throw new Error('Missing project link: '+href);
           }
         }
-        for (const image of await page.locator('main img').all()) {
+        for (const image of await page.locator('main img[src]:visible').all()) {
           await image.scrollIntoViewIfNeeded();
           await image.evaluate(img => img.decode());
         }
@@ -82,9 +82,11 @@ if (!playwright) throw new Error('Playwright unavailable. Install it locally wit
         const current = page.locator('nav a[aria-current="page"]');
         if (await current.count() !== 1) throw new Error('Missing active page navigation');
         for (const href of ['index.html','projects.html','blog.html','resume.html','about.html']) {
+          await page.waitForLoadState('load');
           await page.evaluate(()=>document.fonts.ready);
-          await page.locator(`.masthead nav a[href="${href}"]`).click();
-          await page.waitForURL(url=>url.pathname.endsWith('/'+href),{waitUntil:'domcontentloaded'});
+          const destination=page.locator(`.masthead nav a[href="${href}"]`);
+          await destination.focus();await destination.press('Enter');
+          await page.waitForURL(url=>url.pathname.endsWith('/'+href),{waitUntil:'load'});
           if (!page.url().endsWith(href)) throw new Error(`Navigation failed: ${href}`);
         }
         await page.goto(`http://127.0.0.1:8000/${file}`);
@@ -93,13 +95,13 @@ if (!playwright) throw new Error('Playwright unavailable. Install it locally wit
         await Promise.all([page.waitForURL(url=>url.hash==='#main'),page.keyboard.press('Enter')]);
         if (!page.url().endsWith('#main')) throw new Error(`${width} ${file}: skip link failed`);
         if (!(await page.locator('#main').evaluate(el=>el===document.activeElement))) throw new Error('Skip link did not transfer focus');
-        const paperLink=page.locator('.side-note a,.case-scope a').first();
+        const paperLink=page.locator('.music-card a:visible,.case-scope a').first();
         if (await paperLink.count()) {
           await paperLink.focus();
-          const focus=await paperLink.evaluate(el=>({visible:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,width:getComputedStyle(el).outlineWidth,colour:getComputedStyle(el).outlineColor,expected:getComputedStyle(el.closest('.side-note,.case-scope')).color}));
+          const focus=await paperLink.evaluate(el=>({visible:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,width:getComputedStyle(el).outlineWidth,colour:getComputedStyle(el).outlineColor,expected:getComputedStyle(el.closest('.music-card,.case-scope')).color}));
           if (!focus.visible||focus.outline==='none'||focus.width==='0px') throw new Error('Missing paper-panel focus outline');
           if (focus.colour!==focus.expected) throw new Error('Focus colour does not match paper ink');
-          if ([375,1440].includes(width)) await page.locator(file==='index.html'?'.side-note':'.case-scope').screenshot({path:path.join(output,`${width}-${file.replace('.html','')}-paper-focus.png`)});
+          if ([375,1440].includes(width)) await page.locator(file==='index.html'?'.music-card':'.case-scope').screenshot({path:path.join(output,`${width}-${file.replace('.html','')}-paper-focus.png`)});
           await paperLink.hover();
         }
 

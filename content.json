@@ -349,20 +349,10 @@
     "workLabel": "Explore the work",
     "resumeLabel": "The resume version",
     "greeting": "Hi, I’m Aryaman.",
-    "sideHeading": "Away from the keyboard",
-    "sideText": "After Hours",
-    "sideLinks": [
-      {
-        "title": "Browse my playlists",
-        "description": "Hip-hop, indie, rock, and a little of everything.",
-        "url": "blog-playlist.html"
-      }
-    ],
     "selectedIds": [
       "trace",
       "hidden-colouring"
     ],
-    "sideDescription": "Chill / late night — one of the playlists in my collection.",
     "greetingLines": [
       "Hi, I’m",
       "Aryaman."
@@ -377,8 +367,7 @@
         "label": "Skopos",
         "url": "projects.html#skopos"
       }
-    ],
-    "heroDetail": "On TRACE, I work on schema generation, shared source onboarding, and UI/UX."
+    ]
   },
   "contributions": [
     {
@@ -465,5 +454,9 @@
     "mail@a4real.org",
     "asri237@proton.me"
   ],
-  "resumeProfile": "Focused on cybersecurity, with practical experience building threat-hunting log workflows and cryptographic demonstrations. Combines Python implementation and integration testing with language-model research, Linux troubleshooting and clear technical communication to investigate security problems."
+  "resumeProfile": "Focused on cybersecurity, with practical experience building threat-hunting log workflows and cryptographic demonstrations. Combines Python implementation and integration testing with language-model research, Linux troubleshooting and clear technical communication to investigate security problems.",
+  "music": {
+    "heading": "On rotation",
+    "workerUrl": "https://a4real-music.irumeria.workers.dev"
+  }
 }
