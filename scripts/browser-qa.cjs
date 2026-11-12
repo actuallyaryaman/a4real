@@ -24,7 +24,7 @@ if (!playwright) throw new Error('Playwright unavailable. Install it locally wit
 
   const output = path.resolve('output/playwright/chromium'); fs.mkdirSync(output, { recursive: true });
   const executablePath = process.env.PORTFOLIO_BROWSER || (fs.existsSync('/opt/helium/chrome') ? '/opt/helium/chrome' : undefined);
-  const browser = await playwright.chromium.launch({ executablePath, headless: true });
+  const browser = process.env.PORTFOLIO_CDP ? await playwright.chromium.connectOverCDP(process.env.PORTFOLIO_CDP) : await playwright.chromium.launch({ executablePath, headless: true });
   const report = [];
   try {
     for (const [width, height] of [[320,812],[375,812],[414,896],[768,1024],[1024,900],[1440,1000]]) {

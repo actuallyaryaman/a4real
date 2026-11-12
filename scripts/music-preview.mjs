@@ -12,7 +12,7 @@ const port=Number(process.argv.find(a=>a.startsWith('--port='))?.split('=')[1]||
 if(!states.includes(fixture)||!Number.isInteger(port)||port<1024||port>65535)throw new Error('Use --fixture='+states.join('|')+' and --port=8013');
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.woff2':'font/woff2','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.pdf':'application/pdf'};
 const cache=new Map();
-const service=createMusicService({artworkFallback:false,
+const service=createMusicService({artworkFallback:false, appleMusicLookup:false,
   timeoutMs:200,
   cache:{async match(k){const v=cache.get(k);return v&&v.expiry>Date.now()?v.response.clone():undefined;},async put(k,r){cache.set(k,{response:r.clone(),expiry:Date.now()+60000});}},
   fetchImpl:async url=>{

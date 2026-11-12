@@ -1,4 +1,4 @@
-const BUILD = 'on-rotation-5';
+const BUILD = 'on-rotation-6';
 class LookupFailure extends Error {
   constructor(kind, details = {}) { super(kind); this.kind = kind; this.details = details; }
 }
@@ -6,7 +6,7 @@ const API = 'https://ws.audioscrobbler.com/2.0/';
 const ART_HOST = 'lastfm.freetls.fastly.net';
 const DEFAULT_ORIGINS = ['https://a4real.org', 'https://www.a4real.org'];
 const FRESH_SECONDS = 60;
-const STALE_SECONDS = 900;
+const STALE_SECONDS = 604800;
 const ERROR_SECONDS = 30;
 
 function clean(value, limit = 240) {
@@ -61,6 +61,20 @@ export function albumArtworkCandidates(payload, track) {
     new URL(item.cover_medium).hostname !== ART_HOST
   ).slice(0, 3).map(item => ({ artwork: safeArtworkUrl(item.cover_medium), artworkSource: 'deezer', artworkPage: `https://www.deezer.com/album/${item.id}` }));
 }
+export function appleMusicSearch(track) {
+  return `https://music.apple.com/sg/search?${new URLSearchParams({ term: `${track.artist} ${track.title}` })}`;
+}
+export function appleMusicCandidate(payload, track) {
+  if (!Array.isArray(payload?.results) || track.title === 'Unknown track' || track.artist === 'Unknown artist') return null;
+  const matches = payload.results.slice(0, 10).filter(item =>
+    item?.kind === 'song' && matchingLabel(item.trackName) === matchingLabel(track.title) &&
+    matchingLabel(item.artistName) === matchingLabel(track.artist) &&
+    Number.isSafeInteger(item.trackId) && item.trackId > 0 &&
+    Number.isSafeInteger(item.collectionId) && item.collectionId > 0
+  ).sort((a, b) => Number(matchingLabel(b.collectionName) === matchingLabel(track.album)) - Number(matchingLabel(a.collectionName) === matchingLabel(track.album)));
+  const found = matches[0];
+  return found ? `https://music.apple.com/sg/album/${found.collectionId}?i=${found.trackId}` : null;
+}
 function profile(username) { return `https://www.last.fm/user/${encodeURIComponent(username)}`; }
 function unavailable(username, now) {
   return { status: 'unavailable', track: null, profileUrl: username ? profile(username) : null, checkedAt: new Date(now).toISOString(), stale: false };
@@ -78,7 +92,7 @@ export function normalizeRecentTracks(payload, username, now = Date.now()) {
   return {
     ...base,
     status: raw['@attr']?.nowplaying === 'true' ? 'playing' : 'recent',
-    track: { title: label(raw.name) || 'Unknown track', artist: label(raw.artist) || 'Unknown artist', album: label(raw.album), url: safeTrackUrl(raw.url), artwork, artworkSource: artwork ? 'lastfm' : null, artworkPage: artwork ? safeTrackUrl(raw.url) || profile(username) : null, playedAt },
+    track: { title: label(raw.name) || 'Unknown track', artist: label(raw.artist) || 'Unknown artist', album: label(raw.album), url: safeTrackUrl(raw.url), artwork, artworkSource: artwork ? 'lastfm' : null, artworkPage: artwork ? safeTrackUrl(raw.url) || profile(username) : null, appleMusicUrl: null, appleMusicMatched: false, playedAt },
   };
 }
 function xml(value) { return clean(value, 1000).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])); }
@@ -101,7 +115,7 @@ function titleLines(text) {
 }
 export function renderSVG(data, artwork = null) {
   const active = data.status === 'playing' && !data.stale;
-  const state = active ? 'NOW PLAYING' : data.status === 'recent' ? (data.stale ? 'RECENTLY SCROBBLED · CACHED' : 'LAST PLAYED') : data.status === 'empty' ? 'NOTHING SCROBBLED YET' : 'LISTENING UNAVAILABLE';
+  const state = active ? 'NOW PLAYING' : data.stale && data.track ? 'LAST SEEN · CACHED' : data.status === 'recent' ? (data.stale ? 'RECENTLY SCROBBLED · CACHED' : 'LAST PLAYED') : data.status === 'empty' ? 'NOTHING SCROBBLED YET' : 'LISTENING UNAVAILABLE';
   const title = data.track?.title || (data.status === 'empty' ? 'A quiet moment.' : 'Between tracks.');
   const artist = data.track?.artist || 'Music, via Last.fm';
   const desc = `${state}. ${data.track ? `${title} by ${artist}${data.track.album ? `, from ${data.track.album}` : ''}.` : 'No listening data available.'} Last.fm reports listening activity; scrobbles may be delayed.${data.track?.artworkSource === 'deezer' ? ' Artwork via Deezer.' : ''}`;
@@ -136,7 +150,7 @@ function rasterType(bytes) {
   return null;
 }
 function base64(bytes) { let value = ''; for (const byte of bytes) value += String.fromCharCode(byte); return btoa(value); }
-export function createMusicService({ fetchImpl = (...args) => fetch(...args), cache = null, now = () => Date.now(), timeoutMs = 4500, logger = console, artworkFallback = true } = {}) {
+export function createMusicService({ fetchImpl = (...args) => fetch(...args), cache = null, now = () => Date.now(), timeoutMs = 4500, logger = console, artworkFallback = true, appleMusicLookup = true } = {}) {
   const inflight = new Map();
   let lastDiagnostic = '', lastDiagnosticAt = 0;
   function diagnostic(kind, details = {}) {
@@ -167,50 +181,111 @@ export function createMusicService({ fetchImpl = (...args) => fetch(...args), ca
   async function put(key, value, ttl) {
     try { await activeCache()?.put(key, new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` } })); } catch { /* Cache eviction must not prevent a response. */ }
   }
-  async function dataFor(request, env) {
+  const identity = track => encodeURIComponent(JSON.stringify([track.artist, track.title, track.album].map(matchingLabel)));
+  const coverKey = (request, track) => `${new URL(request.url).origin}/__music-cover-lookup/${BUILD}/${identity(track)}`;
+  const appleKey = (request, track) => `${new URL(request.url).origin}/__music-apple/${BUILD}/${identity(track)}`;
+  async function cachedJSON(key) { try { return await (await match(key))?.json(); } catch { return null; } }
+  async function lastGood(base) {
+    const previous = await cachedJSON(base + '/stale');
+    const age = now() - Date.parse(previous?.checkedAt);
+    return previous && age >= 0 && age < STALE_SECONDS * 1000 ? { ...previous, stale: true, enriching: false } : null;
+  }
+  async function appleFor(request, track) {
+    const key = appleKey(request, track), cached = await cachedJSON(key);
+    if (cached) return cached;
+    if (inflight.has(key)) return inflight.get(key);
+    const promise = (async () => {
+      let value = { appleMusicUrl: appleMusicSearch(track), appleMusicMatched: false }, ttl = 86400;
+      try {
+        if (track.title !== 'Unknown track' && track.artist !== 'Unknown artist') {
+          const url = new URL('https://itunes.apple.com/search');
+          url.search = new URLSearchParams({ term: `${track.artist} ${track.title}`, entity: 'song', media: 'music', country: 'sg', limit: '10' });
+          const result = await timed(url.href, 131072, 'application/json', Math.min(timeoutMs, 2000));
+          const payload = JSON.parse(new TextDecoder().decode(result.bytes));
+          if (!Array.isArray(payload?.results)) throw new Error('Invalid catalog');
+          const matched = appleMusicCandidate(payload, track);
+          if (matched) { value = { appleMusicUrl: matched, appleMusicMatched: true }; ttl = 2592000; }
+        }
+      } catch { ttl = 300; }
+      await put(key, value, ttl); return value;
+    })();
+    inflight.set(key, promise);
+    try { return await promise; } finally { inflight.delete(key); }
+  }
+  async function warmEnrichment(request, data) {
+    if (!data.track) return data;
+    const copy = structuredClone(data);
+    if (appleMusicLookup) Object.assign(copy.track, await cachedJSON(appleKey(request, copy.track)) || { appleMusicUrl: appleMusicSearch(copy.track), appleMusicMatched: false });
+    if (artworkFallback) {
+      const cover = await cachedJSON(coverKey(request, copy.track));
+      if (cover) Object.assign(copy.track, cover);
+    }
+    return copy;
+  }
+  async function enrich(request, data, env, base) {
+    const key = base + '/enrichment';
+    if (inflight.has(key)) return inflight.get(key);
+    const promise = (async () => {
+      const copy = structuredClone(data);
+      if (copy.track) {
+        await Promise.all([
+          artworkFallback ? resolveArtwork(request, copy.track, env, copy.profileUrl).then(value => Object.assign(copy.track, value)).catch(() => {}) : null,
+          appleMusicLookup ? appleFor(request, copy.track).then(value => Object.assign(copy.track, value)).catch(() => {}) : null,
+        ]);
+      }
+      copy.enriching = false;
+      // A slow older enrichment must not overwrite a newer metadata snapshot.
+      const current = await cachedJSON(base);
+      if (!current || current.checkedAt === copy.checkedAt) {
+        await put(base + '/stale', copy, STALE_SECONDS);
+        await put(base, copy, FRESH_SECONDS);
+      }
+      return copy;
+    })();
+    inflight.set(key, promise);
+    try { return await promise; } finally { inflight.delete(key); }
+  }
+  async function dataFor(request, env, ctx) {
     const username = /^[A-Za-z0-9_-]{1,64}$/.test(env.LASTFM_USERNAME || '') ? env.LASTFM_USERNAME : '';
     if (!username || !env.LASTFM_API_KEY) { diagnostic('configuration_missing', { usernameReady: !!username, apiKeyReady: !!env.LASTFM_API_KEY }); return unavailable(username, now()); }
     const base = `${new URL(request.url).origin}/__music-cache/${BUILD}/${encodeURIComponent(username)}`;
-    const cached = await match(base);
-    if (cached) return cached.json();
-    if (inflight.has(base)) return inflight.get(base);
-    const promise = (async () => {
-      try {
-        const url = new URL(API);
-        url.search = new URLSearchParams({ method: 'user.getRecentTracks', user: username, api_key: env.LASTFM_API_KEY, format: 'json', limit: '1' });
-        const result = await timed(url.href, 65536, 'application/json', timeoutMs, true);
-        let payload;
-        try { payload = JSON.parse(new TextDecoder().decode(result.bytes)); }
-        catch { throw new LookupFailure(result.ok ? 'invalid_response' : 'upstream_http', result.ok ? {} : { status: result.status }); }
-        if (payload?.error) {
-          const code = Number(payload.error);
-          throw new LookupFailure('lastfm_error', { lastfmCode: Number.isInteger(code) && code > 0 && code < 1000 ? code : null });
-        }
-        if (!result.ok) throw new LookupFailure('upstream_http', { status: result.status });
-        const data = normalizeRecentTracks(payload, username, now());
-        if (artworkFallback && data.track) {
-          try { Object.assign(data.track, await resolveArtwork(request, data.track, env, data.profileUrl)); }
-          catch { Object.assign(data.track, { artwork: null, artworkSource: null, artworkPage: null }); }
-        }
-        await put(base + '/stale', data, STALE_SECONDS);
-        await put(base, data, FRESH_SECONDS);
-        return data;
-      } catch (error) {
-        diagnostic(error instanceof LookupFailure ? error.kind : 'network_or_invalid_response', error instanceof LookupFailure ? error.details : {});
-        let data = unavailable(username, now());
+    const background = typeof ctx?.waitUntil === 'function';
+    const cached = await cachedJSON(base);
+    if (cached) return cached;
+    async function refresh() {
+      if (inflight.has(base)) return structuredClone(await inflight.get(base));
+      const promise = (async () => {
         try {
-          const previous = await (await match(base + '/stale'))?.json();
-          if (previous && now() - Date.parse(previous.checkedAt) < STALE_SECONDS * 1000 && now() >= Date.parse(previous.checkedAt)) {
-            if (previous.track?.playedAt) data = { ...previous, status: 'recent', stale: true };
-            else if (previous.status === 'recent') data = { ...previous, stale: true };
+          const url = new URL(API);
+          url.search = new URLSearchParams({ method: 'user.getRecentTracks', user: username, api_key: env.LASTFM_API_KEY, format: 'json', limit: '1' });
+          const result = await timed(url.href, 65536, 'application/json', timeoutMs, true);
+          let payload;
+          try { payload = JSON.parse(new TextDecoder().decode(result.bytes)); }
+          catch { throw new LookupFailure(result.ok ? 'invalid_response' : 'upstream_http', result.ok ? {} : { status: result.status }); }
+          if (payload?.error) {
+            const code = Number(payload.error);
+            throw new LookupFailure('lastfm_error', { lastfmCode: Number.isInteger(code) && code > 0 && code < 1000 ? code : null });
           }
-        } catch { /* An invalid cached value is treated as unavailable. */ }
-        await put(base, data, ERROR_SECONDS);
-        return data;
-      }
-    })();
-    inflight.set(base, promise);
-    try { return await promise; } finally { inflight.delete(base); }
+          if (!result.ok) throw new LookupFailure('upstream_http', { status: result.status });
+          const data = await warmEnrichment(request, normalizeRecentTracks(payload, username, now()));
+          data.enriching = !!data.track && (artworkFallback || appleMusicLookup);
+          await put(base + '/stale', data, STALE_SECONDS);
+          await put(base, data, FRESH_SECONDS);
+          if (!data.enriching) return data;
+          if (background) { ctx.waitUntil(enrich(request, data, env, base)); return data; }
+          return enrich(request, data, env, base);
+        } catch (error) {
+          diagnostic(error instanceof LookupFailure ? error.kind : 'network_or_invalid_response', error instanceof LookupFailure ? error.details : {});
+          const data = await lastGood(base) || unavailable(username, now());
+          await put(base, data, ERROR_SECONDS); return data;
+        }
+      })();
+      inflight.set(base, promise);
+      try { return structuredClone(await promise); } finally { inflight.delete(base); }
+    }
+    const previous = background ? await lastGood(base) : null;
+    if (previous) { ctx.waitUntil(refresh()); return previous; }
+    return refresh();
   }
   async function artworkFor(request, value, operationTimeout = 2500) {
     const url = safeArtworkUrl(value); if (!url) return null;
@@ -308,7 +383,7 @@ export function createMusicService({ fetchImpl = (...args) => fetch(...args), ca
     try { return await promise; } finally { inflight.delete(key); }
   }
   return {
-    async fetch(request, env = {}) {
+    async fetch(request, env = {}, ctx) {
       const url = new URL(request.url), svg = url.pathname === '/api/now-playing.svg';
       if (!svg && url.pathname !== '/api/now-playing') return new Response('Not found', { status: 404 });
       const origin = request.headers.get('Origin');
@@ -326,8 +401,14 @@ export function createMusicService({ fetchImpl = (...args) => fetch(...args), ca
         return new Response(null, { status: 204, headers });
       }
       if (!['GET', 'HEAD'].includes(request.method)) { headers.set('Allow', 'GET, HEAD, OPTIONS'); return new Response(null, { status: 405, headers }); }
-      const data = await dataFor(request, env);
-      if (data.status === 'unavailable' || data.stale) headers.set('Cache-Control', 'public, max-age=30');
+      let data = await dataFor(request, env, ctx);
+      if (svg && data.enriching) {
+        const username = env.LASTFM_USERNAME;
+        const base = `${url.origin}/__music-cache/${BUILD}/${encodeURIComponent(username)}`;
+        data = await enrich(request, data, env, base);
+      }
+      if (data.stale || data.enriching) headers.set('Cache-Control', 'no-cache');
+      else if (data.status === 'unavailable') headers.set('Cache-Control', 'public, max-age=30');
       const image = svg && request.method !== 'HEAD' ? await artworkFor(request, data.track?.artwork) : null;
       return new Response(request.method === 'HEAD' ? null : svg ? renderSVG(data, image) : JSON.stringify(data), { headers });
     },

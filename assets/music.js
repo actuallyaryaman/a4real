@@ -1,11 +1,5 @@
 const REFRESH_MS = 60000;
 
-function lastfmURL(value, prefix) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname === 'www.last.fm' && !url.username && !url.password && !url.port && url.pathname.startsWith(prefix) ? url.href : null;
-  } catch { return null; }
-}
 function artworkURL(value) {
   try {
     const url = new URL(value);
@@ -15,104 +9,102 @@ function artworkURL(value) {
     return null;
   } catch { return null; }
 }
-function artworkPageURL(value) {
-  const lastfm = lastfmURL(value, '/music/') || lastfmURL(value, '/user/');
-  if (lastfm) return lastfm;
+function appleURL(track) {
   try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname === 'www.deezer.com' && !url.username && !url.password && !url.port && !url.search && !url.hash && /^\/album\/[1-9]\d{0,15}$/.test(url.pathname) ? url.href : null;
-  } catch { return null; }
+    const url = new URL(track.appleMusicUrl);
+    if (url.protocol === 'https:' && url.hostname === 'music.apple.com' && !url.username && !url.password && !url.port && !url.hash &&
+        (/^\/sg\/album\/[1-9]\d{0,15}$/.test(url.pathname) && /^[1-9]\d{0,15}$/.test(url.searchParams.get('i')) && [...url.searchParams.keys()].every(k => k === 'i'))) return {url:url.href,matched:true};
+  } catch {}
+  return {url:'https://music.apple.com/sg/search?term='+encodeURIComponent(text(track.artist)+' '+text(track.title)),matched:false};
 }
 const text = (value, fallback = '') => typeof value === 'string' ? Array.from(value).slice(0, 240).join('') || fallback : fallback;
 
 export function mountMusic(card, {fetchImpl = window.fetch.bind(window), interval = REFRESH_MS} = {}) {
+  card._stopMusic?.();
   const get = name => card.querySelector(`[data-music-${name}]`);
   let endpoint;
   try {
     endpoint = new URL(card.dataset.endpoint);
-    const localPreview = ['127.0.0.1','localhost'].includes(location.hostname) && endpoint.origin === location.origin && endpoint.protocol === 'http:';
-    if ((!localPreview && endpoint.protocol !== 'https:') || endpoint.username || endpoint.password || endpoint.pathname !== '/api/now-playing') return;
+    const local = ['127.0.0.1','localhost'].includes(location.hostname) && endpoint.origin === location.origin && endpoint.protocol === 'http:';
+    if ((!local && endpoint.protocol !== 'https:') || endpoint.username || endpoint.password || endpoint.pathname !== '/api/now-playing') return;
   } catch { return; }
-  let timer, controller, lastRequest = 0, stopped = false;
-  const status = get('status'), title = get('track'), fallback = get('fallback'), artist = get('artist'), album = get('album'), note = get('note'), art = get('art'), artLink = get('art-link'), profile = get('profile');
-  let announced = '';
-  function announce(message) { if (announced !== message) { note.textContent = message; announced = message; } }
-  function unavailable(message = 'Listening data is taking a break.') {
-    card.dataset.state = 'unavailable'; status.textContent = 'Listening unavailable';
-    title.hidden = true; title.removeAttribute('href'); fallback.hidden = false;
-    fallback.textContent = 'Between tracks.'; artist.textContent = 'Music, across devices.'; album.textContent = '';
-    art.hidden = true; art.removeAttribute('src'); artLink.hidden = true; artLink.removeAttribute('href'); announce(message);
+  card.dataset.musicMounted='true';
+  const key='on-rotation:v2:'+endpoint.origin, maxAge=14*86400000;
+  const status=get('status'),title=get('track'),fallback=get('fallback'),artist=get('artist'),album=get('album'),note=get('note'),art=get('art'),artLink=get('art-link'),listen=get('listen');
+  let timer,controller,lastGood,lastRequest=0,stopped=false,followups=0,identity='';
+  function snapshot(data) {
+    if (!data || !['playing','recent'].includes(data.status) || !data.track || !Number.isFinite(Date.parse(data.checkedAt))) return null;
+    if (Date.now()-Date.parse(data.checkedAt)>maxAge || Date.parse(data.checkedAt)>Date.now()+60000) return null;
+    const track={};
+    for (const field of ['title','artist','album','playedAt','artwork','artworkSource','appleMusicUrl']) track[field]=text(data.track[field]);
+    track.appleMusicMatched=data.track.appleMusicMatched===true;
+    return {status:data.status,checkedAt:data.checkedAt,stale:!!data.stale,enriching:!!data.enriching,track};
   }
-  function render(data) {
-    if (!data || !['playing','recent','empty','unavailable'].includes(data.status)) throw new Error('Invalid music response');
-    const profileURL = lastfmURL(data.profileUrl, '/user/');
-    profile.hidden = !profileURL;
-    if (profileURL) profile.href = profileURL; else profile.removeAttribute('href');
-    if (data.status === 'unavailable') { unavailable(); return; }
-    if (data.status === 'empty') {
-      unavailable('No listening history on Last.fm yet.'); card.dataset.state = 'empty';
-      status.textContent = 'Nothing scrobbled yet'; fallback.textContent = 'A quiet moment.'; return;
-    }
-    if (!data.track || typeof data.track !== 'object' || !Number.isFinite(Date.parse(data.checkedAt))) throw new Error('Invalid track');
-    // An old browser/proxy response must never continue to claim active playback.
-    const stale = data.stale || Date.now() - Date.parse(data.checkedAt) > 180000;
-    if (stale && data.status === 'playing' && !Number.isFinite(Date.parse(data.track.playedAt))) { unavailable('Cached listening data is out of date.'); return; }
-    const playing = data.status === 'playing' && !stale;
-    const trackTitle = text(data.track.title,'Unknown track'), trackArtist = text(data.track.artist,'Unknown artist');
-    card.dataset.state = playing ? 'playing' : 'recent';
-    status.textContent = playing ? 'Now playing' : stale ? 'Recently scrobbled · cached' : 'Last played';
-    const trackURL = lastfmURL(data.track.url, '/music/');
-    title.hidden = !trackURL; fallback.hidden = !!trackURL;
-    title.textContent = trackTitle; title.title = trackTitle;
-    if (trackURL) title.href = trackURL; else title.removeAttribute('href');
-    fallback.textContent = trackTitle; fallback.title = trackTitle;
-    artist.textContent = trackArtist; artist.title = trackArtist;
-    album.textContent = text(data.track.album); album.title = album.textContent;
-    const imageURL = artworkURL(data.track.artwork);
-    const credit = artworkPageURL(data.track.artworkPage) || trackURL || profileURL;
-    artLink.hidden = true;
-    if (credit) artLink.href = credit; else artLink.removeAttribute('href');
-    const provider = data.track.artworkSource === 'deezer' ? 'Deezer' : 'Last.fm';
-    artLink.title = `Artwork via ${provider}`;
-    artLink.setAttribute('aria-label', `View artwork source on ${provider}`);
-    if (imageURL && (art.getAttribute('src') !== imageURL || (art.complete && art.naturalWidth === 0))) { art.hidden = true; art.src = imageURL; }
-    else if (!imageURL) { art.hidden = true; art.removeAttribute('src'); }
-    else if (art.complete && art.naturalWidth > 0) { art.hidden = false; artLink.hidden = !credit; }
-    let message = playing ? 'Reported by Last.fm. Scrobbles may lag.' : 'Listening activity via Last.fm.';
-    const date = Date.parse(data.track.playedAt);
-    if (!playing && Number.isFinite(date)) message = `${stale ? 'Cached · ' : ''}${new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(date)} · Last.fm`;
-    if (stale && !Number.isFinite(date)) message = 'Cached activity. Last.fm may be unavailable.';
-    announce(message);
+  function quiet(empty=false) {
+    card.dataset.state=empty?'empty':'unavailable'; status.textContent=empty?'Nothing scrobbled yet':'Recent listening';
+    title.hidden=true;title.removeAttribute('href');fallback.hidden=false;fallback.textContent=empty?'A quiet moment.':'Between tracks.';
+    artist.textContent='Music, across devices.';album.textContent='';note.textContent=empty?'via Last.fm':'Updates will return shortly.';
+    art.hidden=true;art.removeAttribute('src');artLink.hidden=true;artLink.removeAttribute('href');listen.hidden=true;
   }
-  const imageLoaded = () => { art.hidden = false; artLink.hidden = !artLink.getAttribute('href'); };
-  const imageFailed = () => { art.hidden = true; artLink.hidden = true; };
-  art.addEventListener('load', imageLoaded);
-  art.addEventListener('error', imageFailed);
-  function schedule() { clearTimeout(timer); if (!stopped && !document.hidden) timer = setTimeout(update, interval); }
+  function render(data,stored=false) {
+    const stale=stored || data.stale || Date.now()-Date.parse(data.checkedAt)>180000;
+    const playing=data.status==='playing' && !stale, track=data.track;
+    card.dataset.state=playing?'playing':'recent';card.dataset.cached=String(!!stale);
+    status.textContent=playing?'Now playing':stale && data.status==='playing'?'Last seen':'Last played';
+    const name=text(track.title,'Unknown track'), by=text(track.artist,'Unknown artist'), apple=appleURL(track);
+    title.hidden=false;fallback.hidden=true;title.textContent=name;title.title=name;title.href=apple.url;
+    artist.textContent=by;artist.title=by;album.textContent=text(track.album);album.title=album.textContent;
+    for (const link of [title,artLink,listen]) {link.href=apple.url;link.setAttribute('aria-label',`${apple.matched?'Open':'Find'} ${name} by ${by} on Apple Music`);}
+    listen.hidden=false;listen.textContent='Apple Music ↗';
+    artLink.title=`Cover via ${track.artworkSource==='deezer'?'Deezer':'Last.fm'} · ${apple.matched?'Open':'Find on'} Apple Music`;
+    const image=artworkURL(track.artwork);
+    if (image && art.getAttribute('src')!==image) {art.hidden=true;artLink.hidden=true;art.src=image;}
+    else if (!image) {art.hidden=true;artLink.hidden=true;art.removeAttribute('src');}
+    else if (art.complete && art.naturalWidth) {art.hidden=false;artLink.hidden=false;}
+    const date=Date.parse(track.playedAt),stamp=Number.isFinite(date)?date:Date.parse(data.checkedAt);
+    const minutes=Math.max(0,Math.floor((Date.now()-stamp)/60000));
+    const when=minutes<1?'just now':minutes<60?`${minutes} min ago`:new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric'}).format(stamp);
+    note.textContent=playing?'via Last.fm':`${stale?'Stored':'Last.fm'} · ${when}`;
+  }
+  function retain() {if(lastGood)render(lastGood,true);else quiet();}
+  const imageLoaded=()=>{if(art.getAttribute('src')){art.hidden=false;artLink.hidden=!artLink.getAttribute('href');}};
+  const imageFailed=()=>{art.hidden=true;artLink.hidden=true;};
+  art.addEventListener('load',imageLoaded);art.addEventListener('error',imageFailed);
+  function schedule(delay=interval) {clearTimeout(timer);if(!stopped&&!document.hidden)timer=setTimeout(update,delay);}
   async function update() {
-    if (stopped || document.hidden || controller) return;
-    lastRequest = Date.now(); controller = new AbortController();
-    const timeout = setTimeout(() => controller?.abort(), 8000);
+    if(stopped||document.hidden||controller)return;
+    lastRequest=Date.now();const request=new AbortController();controller=request;
+    const timeout=setTimeout(()=>request.abort(),8000);let delay=interval;
     try {
-      const response = await fetchImpl(endpoint.href,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer'});
-      if (!response.ok) throw new Error('Music unavailable');
-      render(await response.json());
-    } catch { unavailable(navigator.onLine === false ? 'Offline. Listening updates will return.' : undefined); }
-    finally {clearTimeout(timeout);controller = null;schedule();}
+      const response=await fetchImpl(endpoint.href,{signal:request.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+      if(!response.ok)throw Error('Unavailable');
+      const data=await response.json();if(stopped)return;
+      if(data.status==='empty') {lastGood=null;try{localStorage.removeItem(key);}catch{}quiet(true);}
+      else {
+        const value=snapshot(data);if(!value)throw Error('Invalid response');
+        // Keep verified optional fields while the same track is being enriched.
+        if(value.enriching && lastGood && ['title','artist','album'].every(k=>value.track[k]===lastGood.track[k])) {
+          if(!value.track.artwork)for(const field of ['artwork','artworkSource'])value.track[field]=lastGood.track[field];
+          if(!value.track.appleMusicMatched && lastGood.track.appleMusicMatched)for(const field of ['appleMusicUrl','appleMusicMatched'])value.track[field]=lastGood.track[field];
+        }
+        lastGood=value;render(value);
+        if(!value.stale)try{localStorage.setItem(key,JSON.stringify(value));}catch{}
+        const next=value.track.artist+'\n'+value.track.title;
+        if(next!==identity){identity=next;followups=0;}
+        if((value.enriching||value.stale)&&followups<2){followups++;delay=2000;}
+      }
+    } catch {if(!stopped&&!document.hidden)retain();}
+    finally {clearTimeout(timeout);controller=null;schedule(delay);}
   }
-  function visibility() {
-    clearTimeout(timer);
-    if (document.hidden) controller?.abort();
-    else if (Date.now()-lastRequest>=interval) update();
-    else timer=setTimeout(update,interval-(Date.now()-lastRequest));
-  }
-  function offline() { controller?.abort(); unavailable('Offline. Listening updates will return.'); }
-  function online() { if (Date.now()-lastRequest>=interval) update(); else schedule(); }
-  document.addEventListener('visibilitychange',visibility);
-  window.addEventListener('offline',offline);window.addEventListener('online',online);
-  card.dataset.state='loading';status.textContent='Checking Last.fm';announce('Finding the latest listening activity.');
+  function visibility(){clearTimeout(timer);if(document.hidden)controller?.abort();else if(Date.now()-lastRequest>=interval)update();else schedule(interval-(Date.now()-lastRequest));}
+  function offline(){controller?.abort();retain();}
+  function online(){update();}
+  document.addEventListener('visibilitychange',visibility);window.addEventListener('offline',offline);window.addEventListener('online',online);
+  try{lastGood=snapshot(JSON.parse(localStorage.getItem(key)));}catch{}
+  if(lastGood)render(lastGood,true);
+  else {card.dataset.state='loading';status.textContent='Recent listening';note.textContent='Checking Last.fm…';}
   update();
-  return () => {stopped=true;clearTimeout(timer);controller?.abort();document.removeEventListener('visibilitychange',visibility);window.removeEventListener('offline',offline);window.removeEventListener('online',online);art.removeEventListener('load',imageLoaded);art.removeEventListener('error',imageFailed);};
+  const stop=()=>{stopped=true;clearTimeout(timer);controller?.abort();document.removeEventListener('visibilitychange',visibility);window.removeEventListener('offline',offline);window.removeEventListener('online',online);art.removeEventListener('load',imageLoaded);art.removeEventListener('error',imageFailed);delete card.dataset.musicMounted;};
+  card._stopMusic=stop;return stop;
 }
-
-for (const card of document.querySelectorAll('[data-music]')) mountMusic(card);
+for(const card of document.querySelectorAll('[data-music]'))if(!card.dataset.musicMounted)mountMusic(card);

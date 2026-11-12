@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMusicService, normalizeRecentTracks, safeArtworkUrl, safeTrackUrl, renderSVG, artworkCandidates, albumArtworkCandidates } from '../workers/now-playing.mjs';
+import { createMusicService, normalizeRecentTracks, safeArtworkUrl, safeTrackUrl, renderSVG, artworkCandidates, albumArtworkCandidates, appleMusicCandidate } from '../workers/now-playing.mjs';
 
 const NOW = Date.parse('2026-11-12T12:00:00Z');
 const ART = 'https://lastfm.freetls.fastly.net/i/u/300x300/abc123.jpg';
@@ -15,8 +15,8 @@ function harness(fetchImpl, opts = {}) {
     async match(key) { const value = entries.get(String(key)); return value && value.expires > time ? value.response.clone() : undefined; },
     async put(key, response) { entries.set(String(key), { response: response.clone(), expires: time + Number(response.headers.get('cache-control').match(/max-age=(\d+)/)[1]) * 1000 }); },
   };
-  const service = createMusicService({ fetchImpl, cache, now: () => time, logger: { warn() {} }, artworkFallback: false, ...opts });
-  return { fetch: (req = request(), env = ENV) => service.fetch(req, env), advance: ms => { time += ms; }, entries };
+  const service = createMusicService({ fetchImpl, cache, now: () => time, logger: { warn() {} }, artworkFallback: false, appleMusicLookup: false, ...opts });
+  return { fetch: (req = request(), env = ENV, ctx) => service.fetch(req, env, ctx), advance: ms => { time += ms; }, entries };
 }
 const jsonResponse = body => new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
 
@@ -99,22 +99,23 @@ test('Last.fm error responses, malformed JSON, large bodies, HTTP failures and t
     assert.equal((await (await h.fetch()).json()).status, 'unavailable');
   }
 });
-test('bounded stale fallback downgrades playing and expires after fifteen minutes', async () => {
+test('bounded stale fallback preserves last seen playback and expires after seven days', async () => {
   let fail = false;
   const h = harness(async () => { if (fail) throw new Error('down'); return jsonResponse(payload(raw({ '@attr': { nowplaying: 'true' } }))); });
   assert.equal((await (await h.fetch()).json()).status, 'playing');
   h.advance(61000); fail = true;
   const stale = await (await h.fetch()).json();
-  assert.equal(stale.status, 'recent'); assert.equal(stale.stale, true);
+  assert.equal(stale.status, 'playing'); assert.equal(stale.stale, true);
   const svg = await (await h.fetch(request('/api/now-playing.svg'))).text();
   assert.doesNotMatch(svg, /NOW PLAYING/); assert.match(svg, /CACHED/);
-  h.advance(900000); assert.equal((await (await h.fetch()).json()).status, 'unavailable');
+  h.advance(604800000); assert.equal((await (await h.fetch()).json()).status, 'unavailable');
 });
 test('a cached playing track without scrobble time never masquerades as last played', async () => {
   let fail = false;
   const h = harness(async () => { if (fail) throw new Error('down'); return jsonResponse(payload(raw({ '@attr': { nowplaying: 'true' }, date: undefined }))); });
   await h.fetch(); fail = true; h.advance(61000);
-  assert.equal((await (await h.fetch()).json()).status, 'unavailable');
+  const saved = await (await h.fetch()).json();
+  assert.equal(saved.status, 'playing'); assert.equal(saved.stale, true); assert.equal(saved.track.playedAt, null);
 });
 test('CORS is exact, supports permitted origins and rejects others without API use', async () => {
   let calls = 0;
@@ -187,7 +188,7 @@ test('diagnostics identify Last.fm error codes without exposing keys, URLs or up
   const records=[];
   const h=harness(async()=>new Response(JSON.stringify({error:10,message:ENV.LASTFM_API_KEY+' private message'}),{status:403,headers:{'Content-Type':'application/json'}}),{logger:{warn:(...args)=>records.push(args)}});
   const response=await h.fetch();
-  assert.equal(response.headers.get('x-music-build'),'on-rotation-5');
+  assert.equal(response.headers.get('x-music-build'),'on-rotation-6');
   assert.equal((await response.json()).status,'unavailable');
   assert.equal(records[0][1].kind,'lastfm_error');
   assert.equal(records[0][1].lastfmCode,10);
@@ -199,8 +200,8 @@ test('denied-origin diagnostics and response identify the deployed code without 
   const h=harness(async()=>jsonResponse(payload()),{logger:{warn:(...args)=>records.push(args)}});
   const response=await h.fetch(request('/api/now-playing',{headers:{Origin:'https://www.a4real.org'}}),{...ENV,PORTFOLIO_ORIGINS:'https://a4real.org'});
   assert.equal(response.status,403);
-  assert.equal(response.headers.get('x-music-build'),'on-rotation-5');
-  assert.deepEqual(records[0][1],{build:'on-rotation-5',kind:'origin_denied',apexAllowed:true,wwwAllowed:false});
+  assert.equal(response.headers.get('x-music-build'),'on-rotation-6');
+  assert.deepEqual(records[0][1],{build:'on-rotation-6',kind:'origin_denied',apexAllowed:true,wwwAllowed:false});
 });
 
 
@@ -352,4 +353,133 @@ test('missing or unusable album covers fall through to exact track matching',asy
   const h=coverHarness({albumCatalog:{data:[{id:1,title:'Fixture album',artist:{name:'Fixture artist'},cover_medium:OTHER_DEEZER_ART}]},catalog:{data:[catalogTrack()]},image:url=>url===OTHER_DEEZER_ART?new Response('broken',{status:404}):new Response(JPEG,{headers:{'Content-Type':'image/jpeg'}})});
   const data=await(await h.fetch()).json();assert.equal(data.track.artwork,DEEZER_ART);
   assert.deepEqual(h.calls,['user.getRecentTracks','album.getInfo','albumCatalog','image','catalog','image']);
+});
+
+const appleItem = (changes = {}) => ({ kind: 'song', trackName: 'Fixture track', artistName: 'Fixture artist', collectionName: 'Fixture album', trackId: 123, collectionId: 456, ...changes });
+const fixtureTrack = { title: 'Fixture track', artist: 'Fixture artist', album: 'Fixture album' };
+function backgroundContext() {
+  const promises = [];
+  return { promises, waitUntil(promise) { promises.push(promise); }, async drain() { for (let i = 0; i < promises.length; i++) await promises[i]; } };
+}
+test('Apple links require exact title and artist, prefer the matching album, and ignore supplied URLs', () => {
+  assert.equal(appleMusicCandidate({ results: [appleItem({ collectionName: 'Other', trackId: 1 }), appleItem({ trackViewUrl: 'javascript:alert(1)' })] }, fixtureTrack), 'https://music.apple.com/sg/album/456?i=123');
+  assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: 'Fixture track (Live)' }), appleItem({ artistName: 'Fixture artist Tribute' })] }, fixtureTrack), null);
+  for (const field of ['trackId', 'collectionId']) for (const value of ['123', -1, 0, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, '123<script>']) {
+    assert.equal(appleMusicCandidate({ results: [appleItem({ [field]: value })] }, fixtureTrack), null);
+  }
+  assert.equal(appleMusicCandidate({ results: [appleItem({ kind: 'music-video' })] }, fixtureTrack), null);
+});
+test('Apple matching preserves remix, live and featured qualifiers', () => {
+  for (const suffix of [' (Live)', ' (Remix)', ' (feat. Guest)']) {
+    assert.equal(appleMusicCandidate({ results: [appleItem()] }, { ...fixtureTrack, title: fixtureTrack.title + suffix }), null);
+    assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: fixtureTrack.title + suffix })] }, { ...fixtureTrack, title: fixtureTrack.title + suffix }), 'https://music.apple.com/sg/album/456?i=123');
+  }
+  assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: 'Ｆixture track' })] }, fixtureTrack), 'https://music.apple.com/sg/album/456?i=123');
+});
+test('Apple catalog metadata is bounded and cached independently of Last.fm snapshots', async () => {
+  let appleCalls = 0;
+  const h = harness(async url => {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'itunes.apple.com') {
+      appleCalls++;
+      assert.equal(parsed.searchParams.get('term'), 'Fixture artist Fixture track');
+      for (const [key, value] of Object.entries({ entity: 'song', media: 'music', country: 'sg', limit: '10' })) assert.equal(parsed.searchParams.get(key), value);
+      return jsonResponse({ results: [appleItem()] });
+    }
+    return jsonResponse(payload(raw()));
+  }, { appleMusicLookup: true });
+  const data = await (await h.fetch()).json();
+  assert.equal(data.track.appleMusicMatched, true); assert.equal(data.track.appleMusicUrl, 'https://music.apple.com/sg/album/456?i=123');
+  h.advance(86400000); await h.fetch(); assert.equal(appleCalls, 1);
+  h.advance(30 * 86400000); await h.fetch(); assert.equal(appleCalls, 2);
+});
+test('unmatched and malicious metadata produce an encoded Apple search link, never a Last.fm fallback', async () => {
+  const title = '<script>🎵 & " live';
+  const h = harness(async url => new URL(url).hostname === 'itunes.apple.com' ? jsonResponse({ results: [appleItem({ trackId: 'javascript:' })] }) : jsonResponse(payload(raw({ name: title }))), { appleMusicLookup: true });
+  const data = await (await h.fetch()).json(), link = new URL(data.track.appleMusicUrl);
+  assert.equal(data.track.appleMusicMatched, false); assert.equal(link.origin, 'https://music.apple.com');
+  assert.equal(link.searchParams.get('term'), 'Fixture artist ' + title);
+});
+test('Apple no-match caches for one day; upstream failures retry after five minutes', async () => {
+  for (const fail of [false, true]) {
+    let calls = 0;
+    const h = harness(async url => {
+      if (new URL(url).hostname === 'itunes.apple.com') { calls++; if (fail) throw new Error('down'); return jsonResponse({ results: [] }); }
+      return jsonResponse(payload(raw()));
+    }, { appleMusicLookup: true });
+    await h.fetch(); h.advance(61000); await h.fetch(); assert.equal(calls, 1);
+    h.advance(fail ? 301000 : 86400000); const data = await (await h.fetch()).json();
+    assert.equal(calls, 2); assert.equal(data.status, 'recent'); assert.equal(data.track.appleMusicMatched, false);
+  }
+});
+test('production JSON returns core metadata while catalog is blocked, then exposes enriched cache', async () => {
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const h = harness(async url => new URL(url).hostname === 'itunes.apple.com' ? blocked : jsonResponse(payload(raw())), { appleMusicLookup: true });
+  const ctx = backgroundContext();
+  const response = await Promise.race([h.fetch(request(), ENV, ctx), new Promise((_, reject) => setTimeout(() => reject(new Error('Metadata blocked on catalog')), 100))]);
+  const initial = await response.json();
+  assert.equal(initial.track.title, 'Fixture track'); assert.equal(initial.enriching, true); assert.equal(response.headers.get('cache-control'), 'no-cache');
+  release(jsonResponse({ results: [appleItem()] })); await ctx.drain();
+  assert.equal(initial.track.appleMusicMatched, false, 'returned snapshot must not mutate in the background');
+  const enriched = await (await h.fetch()).json(); assert.equal(enriched.enriching, false); assert.equal(enriched.track.appleMusicMatched, true);
+});
+test('production JSON does not block on optional artwork verification either', async () => {
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const h = harness(async url => new URL(url).hostname === 'lastfm.freetls.fastly.net' ? blocked : jsonResponse(payload(raw())), { artworkFallback: true });
+  const ctx = backgroundContext();
+  const response = await Promise.race([h.fetch(request(), ENV, ctx), new Promise((_, reject) => setTimeout(() => reject(new Error('Metadata blocked on artwork')), 100))]);
+  assert.equal((await response.json()).enriching, true);
+  release(new Response(JPEG, { headers: { 'Content-Type': 'image/jpeg' } })); await ctx.drain();
+  assert.equal((await (await h.fetch()).json()).track.artwork, ART);
+});
+test('stale-while-revalidate instantly retains active last-good data on Last.fm failure without inventing a scrobble', async () => {
+  let fail = false, release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const h = harness(async () => { if (fail) return blocked; return jsonResponse(payload(raw({ '@attr': { nowplaying: 'true' }, date: undefined }))); });
+  await h.fetch(); h.advance(61000); fail = true;
+  const ctx = backgroundContext();
+  const response = await Promise.race([h.fetch(request(), ENV, ctx), new Promise((_, reject) => setTimeout(() => reject(new Error('Stale metadata blocked')), 100))]);
+  const stale = await response.json();
+  assert.equal(stale.track.title, 'Fixture track'); assert.equal(stale.stale, true); assert.equal(stale.status, 'playing'); assert.equal(stale.track.playedAt, null);
+  assert.equal(response.headers.get('cache-control'), 'no-cache');
+  release(new Response('down', { status: 503 })); await ctx.drain();
+  assert.equal((await (await h.fetch()).json()).track.title, 'Fixture track');
+  assert.match(renderSVG(stale), /LAST SEEN · CACHED/); assert.doesNotMatch(renderSVG(stale), /NOW PLAYING/);
+});
+test('SWR refresh replaces an old snapshot and optional lookup coalesces across listeners', async () => {
+  let title = 'Old', appleCalls = 0;
+  const h = harness(async url => {
+    if (new URL(url).hostname === 'itunes.apple.com') { appleCalls++; await new Promise(resolve => setTimeout(resolve, 10)); return jsonResponse({ results: [appleItem()] }); }
+    return jsonResponse(payload(raw({ name: title })));
+  }, { appleMusicLookup: true });
+  await h.fetch(); title = 'Fixture track'; h.advance(61000);
+  const ctx = backgroundContext();
+  const first = await (await h.fetch(request(), ENV, ctx)).json(); assert.equal(first.track.title, 'Old');
+  await ctx.drain(); assert.equal((await (await h.fetch()).json()).track.title, 'Fixture track');
+  assert.equal(appleCalls, 2);
+  const other = { ...ENV, LASTFM_USERNAME: 'another-listener' };
+  await Promise.all([h.fetch(request(), other), h.fetch(request(), { ...other, LASTFM_USERNAME: 'third-listener' })]);
+  assert.equal(appleCalls, 2, 'catalog cache is shared by metadata identity, not listener');
+});
+test('Apple timeouts fail softly without delaying the production metadata response', async () => {
+  const h = harness(async url => new URL(url).hostname === 'itunes.apple.com' ? new Promise(() => {}) : jsonResponse(payload(raw())), { appleMusicLookup: true, timeoutMs: 20 });
+  const ctx = backgroundContext();
+  const first = await (await h.fetch(request(), ENV, ctx)).json(); assert.equal(first.enriching, true);
+  await ctx.drain();
+  const settled = await (await h.fetch()).json();
+  assert.equal(settled.enriching, false); assert.equal(settled.status, 'recent');
+  assert.equal(settled.track.appleMusicMatched, false); assert.match(settled.track.appleMusicUrl, /^https:\/\/music\.apple\.com\/sg\/search\?/);
+});
+test('optional Apple lookups coalesce across concurrent listeners', async () => {
+  let calls = 0, release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const h = harness(async url => {
+    if (new URL(url).hostname === 'itunes.apple.com') { calls++; return blocked; }
+    return jsonResponse(payload(raw()));
+  }, { appleMusicLookup: true });
+  const ctx = backgroundContext();
+  await Promise.all([h.fetch(request(), ENV, ctx), h.fetch(request(), { ...ENV, LASTFM_USERNAME: 'other-listener' }, ctx)]);
+  assert.equal(calls, 1); release(jsonResponse({ results: [appleItem()] })); await ctx.drain();
 });

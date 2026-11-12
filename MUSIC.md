@@ -31,7 +31,7 @@ The two portfolio origins are defaults; set the optional variable only if you ne
 }
 ```
 
-Use the origin only, with no endpoint path. Run `python3 build.py`, then commit/push when ready. The live JSON CORS policy permits your public portfolio origins; use the fixture preview below for localhost review. With current branch-based Pages publishing, include the generated HTML and assets. If you enable the existing Actions workflow, it can build them for you. An empty `workerUrl` leaves a quiet unavailable state with a working playlists link and makes no music requests.
+Use the origin only, with no endpoint path. Run `python3 build.py`, then commit/push when ready. The live JSON CORS policy permits your public portfolio origins; use the fixture preview below for localhost review. With current branch-based Pages publishing, include the generated HTML and assets. If you enable the existing Actions workflow, it can build them for you. An empty `workerUrl` leaves a quiet listening placeholder with a working playlists link and makes no music requests.
 
 ## GitHub profile
 
@@ -73,10 +73,10 @@ For browser verification using the already installed Playwright/Chromium, start 
 
 ## Cache, privacy and operating limits
 
-- The visible portfolio polls every 60 seconds, pauses when hidden and bounds each request to 8 seconds. Track labels distinguish active playback from scrobbled history. Last.fm may report activity late; the widget does not contact Apple Music or claim device-level playback synchronization.
+- The visible portfolio polls every 60 seconds, pauses when hidden and bounds each request to 8 seconds. Track labels distinguish active playback from scrobbled history. Last.fm may report activity late; playback still comes only from Last.fm. Apple’s public catalog is used solely to find a destination link, without Apple account credentials or playback access.
 - JSON and SVG share one normalized 60-second edge cache. Request query strings do not alter the upstream user, limit, or cache key. Concurrent requests within an isolate share an in-flight request. Errors have a 30-second cooldown. Artwork has a one-day cache and a five-minute negative cache.
-- A previously scrobbled result can survive an upstream failure for up to 15 minutes with a cached label. A stale active result without a scrobble timestamp becomes unavailable. The cache is evictable and local to each Cloudflare datacenter, not a global rate limiter or durable storage. Dashboard editor previews do not exercise the deployed Cache API.
-- Each playback cache miss makes one bounded Last.fm recent-tracks call (`limit=1`); optional artwork queries use their own track-level cache. Last.fm playback JSON is limited to 64 KiB with a 4.5-second timeout; optional artwork resolution has a three-second total budget and a maximum 1.2-second timeout per operation. Artwork is limited to 100 KiB. Music links and images use exact HTTPS Last.fm/Deezer destination and raster-path allowlists. Redirects are rejected. The endpoints do not proxy arbitrary URLs or accept arbitrary usernames from callers.
+- The edge keeps a last-good snapshot for up to seven days and serves it while refreshing. A stale active result without a scrobble timestamp is labelled Last seen, never Last played or Now playing. The cache is evictable and local to each Cloudflare datacenter, not a global rate limiter or durable storage. Dashboard editor previews do not exercise the deployed Cache API.
+- Each playback cache miss makes one bounded Last.fm recent-tracks call (`limit=1`); optional artwork queries use their own track-level cache. Last.fm playback JSON is limited to 64 KiB with a 4.5-second timeout; optional artwork resolution has a three-second total budget and a maximum 1.2-second timeout per operation. Artwork is limited to 100 KiB. Track links use validated Apple Music URLs; images use exact HTTPS Last.fm/Deezer raster-path allowlists. Redirects are rejected. The endpoints do not proxy arbitrary URLs or accept arbitrary usernames from callers.
 - JSON permits only the configured portfolio origins in browser CORS requests; SVG is public for image embedding. CORS is not authentication: this is intentionally public listening data and can be requested without a browser Origin header. Public fields are just track, artist, album, artwork, artwork provider/source link, music/profile links, scrobble time and last-check state. No listening history collection, analytics or telemetry is added.
 - A small personal widget fits the Workers Free model (currently 100,000 requests/day, 10 ms CPU/request). Cache hits still invoke the Worker. Traffic, cache distribution and artwork processing affect usage; actual Cloudflare CPU/runtime behavior needs verification after manual deployment. No paid service or persistent storage is required by this implementation.
 - If a Last.fm client stops reporting now-playing or scrobbles, the integration cannot infer playback independently. If Last.fm leaves its active flag stale, it is still an upstream report rather than proof the device is playing. A browser/proxy result older than three minutes is never labelled Now playing by the portfolio.
@@ -96,7 +96,7 @@ After your manual deployment, confirm JSON and SVG over the public Worker URL, t
 
 ## Diagnose a deployed unavailable response
 
-The current Worker adds `X-Music-Build: on-rotation-5` to JSON/SVG responses, including denied-origin responses. This confirms which source is running. If the dashboard settings look correct but the endpoint still fails, paste the latest `workers/now-playing.mjs` into Edit code and deploy it; the existing secrets remain in Worker settings.
+The current Worker adds `X-Music-Build: on-rotation-6` to JSON/SVG responses, including denied-origin responses. This confirms which source is running. If the dashboard settings look correct but the endpoint still fails, paste the latest `workers/now-playing.mjs` into Edit code and deploy it; the existing secrets remain in Worker settings.
 
 Open the deployed Worker's live logs, request `/api/now-playing`, and inspect a **Music diagnostic** record. The record contains only a fixed failure category, numeric upstream status/error code, or booleans indicating missing configuration/allowed origins. It never logs the API key, upstream URL, raw error message, or listening metadata. Repeated identical diagnostics within the same isolate are limited to once per minute. Allow 60 seconds between checks for the edge cache and diagnostic cooldown to expire.
 
@@ -124,3 +124,23 @@ The only added provider is the public Deezer catalog; no account, key, paid prod
 The iTunes Search API was evaluated but not selected because its documented promotional presentation requirements would introduce store-specific badges. Cover Art Archive was also evaluated; it needs a separate MusicBrainz release match and a redirect-aware archive pipeline. Deezer's plain artist/title search returned a matching single for the current Last.fm track, while a stricter advanced-query form returned no matches, so the implementation uses plain bounded search plus local exact-match filtering.
 
 CoverAtlas was reviewed as an alternative (homepage, public search scripts and Internet Service Terms). No documented public artwork API was found in the reviewed material. Its published terms discuss purchased-license scope and restrict unauthorized redistribution, so this integration does not scrape its HTML or hotlink its assets. The live fallback instead uses the bounded catalog APIs described above.
+
+## Immediate rendering and Apple Music links
+
+The homepage stores the latest successful public track response in this browser’s localStorage for up to 14 days, scoped to the configured Worker origin. It renders that snapshot before requesting updates. Cached active playback says **Last seen**; confirmed recent scrobbles say **Last played**. Failed requests and offline events retain the useful track. Expired, malformed or unavailable storage is handled safely. This stores only the public card metadata, without analytics or credentials; clearing site data removes it.
+
+The homepage embeds its small music module directly, avoiding another script request. Its compact information group keeps title, artist, album and timestamp together; reserved space beneath the group prevents updates from shifting the page. First-time visitors still need a network response, so they see a neutral listening placeholder rather than a false unavailable state.
+
+The Worker returns core Last.fm metadata immediately, then uses `ctx.waitUntil` for artwork and Apple link enrichment. The portfolio makes at most two early two-second followups for pending enrichment or a stale edge snapshot, then returns to its normal 60-second visible-tab interval. Edge caching is evictable, not durable storage.
+
+Title, artwork and the Apple Music footer link share the same destination. Exact title/artist catalog matches use validated numeric Apple Music track links in the Singapore storefront; album matches receive preference. Without a verified match, the link is an encoded Apple Music search and its accessible label says Find. No card link redirects to a Last.fm profile. Apple catalog matches cache for 30 days, misses for one day, and transient failures for five minutes. Search calls are bounded to two seconds, limited to ten results, and never supply artwork or playback status.
+
+Run `node scripts/music-cache-qa.cjs` for the focused stored-rendering, offline retention, Apple destinations, corrupt/expired/blocked storage and bounded enrichment checks. Set `PORTFOLIO_BROWSER` to the installed Chromium-compatible browser executable when needed.
+
+Apple catalog reference: [Apple Search API](https://performance-partners.apple.com/search-api).
+
+### Obscura browser QA
+
+Start the installed headless engine with `/home/logic/obscura serve --port 9237 --allow-private-network`, then run `PORTFOLIO_CDP=ws://127.0.0.1:9237/devtools/browser node scripts/music-obscura-qa.cjs`. This uses real local HTTP fixtures and full-page screenshots at 375, 768 and 1440 pixels, plus stable card heights, long titles, missing metadata, cached rendering before a blocked request, failed-refresh retention and keyboard focus plus playlist click navigation. Captures are written to `output/playwright/music/obscura/`. The `PORTFOLIO_CDP` option also connects the other QA scripts to an existing CDP browser. Obscura’s font/layout and interception implementations can differ from Chromium; do not treat an engine limitation as proof of a production regression.
+
+Obscura 0.2.6 QA limitation: `Network.emulateNetworkConditions` is unsupported, so its offline check dispatches the browser offline event; it does not claim physical network disconnection. Enter activation did not navigate even though focus and click navigation worked, so Enter acceptance is not claimed for this engine. The generic Chromium harness retains its actual offline and keyboard activation checks.
