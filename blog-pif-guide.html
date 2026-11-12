@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Integrity Box + TrickyStore + HMA-OSS Setup Guide — Aryaman Srivastava</title><meta name="description" content="Installing and configuring Integrity Box, TrickyStore, and HMA-OSS on rooted Android."><meta name="theme-color" content="#120f0c"><meta property="og:type" content="article"><meta property="og:title" content="Integrity Box + TrickyStore + HMA-OSS Setup Guide — Aryaman Srivastava"><meta property="og:description" content="Installing and configuring Integrity Box, TrickyStore, and HMA-OSS on rooted Android."><meta property="og:image" content="assets/social-preview.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Aryaman Srivastava — Systems &amp; Security"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="preload" href="assets/fonts/plex-400.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="styles.css?v=cab6c7b9e8f1"><link rel="stylesheet" href="editorial.css?v=21133b3192ae"><link rel="stylesheet" href="fonts.css?v=f7a471997d42"></head><body id="top"><a class="skip" href="#main">Skip to content</a><header class="wrap masthead"><a class="author-mark" href="index.html">Aryaman Srivastava<span aria-hidden="true">.</span></a><nav aria-label="Main navigation"><a href="index.html">Home</a><a href="projects.html">Projects</a><a href="blog.html" aria-current="page">Writing</a><a href="about.html">About</a><a href="resume.html">Resume</a></nav></header><main id="main" tabindex="-1"><header class="wrap article-header"><a class="text-link" href="blog.html">All writing <span aria-hidden="true">←</span></a><p class="article-meta"><time datetime="2026-02">February 2026</time><span>1 min read</span><span>android / root / guides</span></p><h1>Integrity Box + TrickyStore + HMA-OSS Setup Guide</h1><p class="article-description">Installing and configuring Integrity Box, TrickyStore, and HMA-OSS on rooted Android.</p><p class="article-author">By Aryaman Srivastava</p></header><div class="wrap article-layout"><aside class="article-index"><p>In this article</p><nav aria-label="Article contents"><a href="#1-download-the-following-modules">1. Download the following modules</a><a href="#2-initial-installation">2. Initial Installation</a><a href="#3-configure-trickystore-via-webui">3. Configure TrickyStore (via WebUI)</a><a href="#4-run-integrity-box-action-button">4. Run Integrity Box Action Button</a><a href="#5-configure-hma-oss">5. Configure HMA-OSS</a></nav></aside><article class="article-prose"><p>Follow the steps <strong>in order</strong>. Do not skip reboots where mentioned.</p>
+<h2 id="1-download-the-following-modules">1. Download the following modules</h2>
+<ul>
+<li><a href="https://github.com/Dr-TSNG/ZygiskNext/releases/latest">Zygisk-Next</a><ul>
+<li><a href="https://github.com/5ec1cff/TrickyStore/releases/latest">TrickyStore</a></li>
+</ul>
+</li>
+<li><a href="https://github.com/KOWX712/Tricky-Addon-Update-Target-List/releases/latest">Tricky Addon</a></li>
+<li><a href="https://github.com/MeowDump/Integrity-Box/releases/latest">Integrity Box</a></li>
+<li><a href="https://t.me/lsposed_irena/20?single">Lsposed-Irene</a></li>
+<li><a href="https://github.com/frknkrc44/HMA-OSS/releases/latest">HMA-OSS</a></li>
+<li><a href="https://github.com/actuallyaryaman/PIF-Guide/releases/download/v1/HMA_Config.json">HMA-config</a></li>
+</ul>
+<blockquote>
+<p><strong>⚠️ Do not install PIF</strong></p>
+</blockquote>
+<hr>
+<h2 id="2-initial-installation">2. Initial Installation</h2>
+<p>Install these modules in order, reboot as mentioned:</p>
+<ol>
+<li>Zygisk Next.<ul>
+<li>Reboot (Set zygisk deny list policy as unmount only and enable the two check boxes)</li>
+</ul>
+</li>
+<li>TrickyStore</li>
+<li>Tricky-Addon-Update-Target-List<ul>
+<li>Reboot</li>
+</ul>
+</li>
+<li>Lsposed-Irene<ul>
+<li>Reboot</li>
+</ul>
+</li>
+<li>Integrity Box<ul>
+<li>Reboot</li>
+</ul>
+</li>
+</ol>
+<h2 id="3-configure-trickystore-via-webui">3. Configure TrickyStore (via WebUI)</h2>
+<ol>
+<li>Select ALL → Deselect unnecessary apps</li>
+<li>Keybox → Valid</li>
+<li>Security patch → Auto</li>
+<li>SAVE</li>
+</ol>
+<h2 id="4-run-integrity-box-action-button">4. Run Integrity Box Action Button</h2>
+<p>Check your integrity status.
+Voila!</p>
+<h2 id="5-configure-hma-oss">5. Configure HMA-OSS</h2>
+<ol>
+<li>Open HMA-OSS</li>
+<li>Restore the downloaded config</li>
+<li>Open Manage Apps → Configure your Banking Apps<ul>
+<li>In template config: Select All presets options, Select All templates, Select all settings template, Select All settings preset.</li>
+</ul>
+</li>
+</ol>
+<p>Everything should work as intended.</p>
+<div class="article-end"><a class="text-link" href="blog.html">Back to all writing <span aria-hidden="true">←</span></a></div></article></div></main><footer class="wrap site-footer"><div class="footer-contact"><h2>Say hello.</h2><a class="footer-email" href="mailto:mail@a4real.org">mail@a4real.org</a><div class="link-rail"><a class="text-link" href="https://www.linkedin.com/in/actuallyaryaman">LinkedIn <span aria-hidden="true">↗</span></a><a class="text-link" href="https://github.com/actuallyaryaman">GitHub <span aria-hidden="true">↗</span></a></div></div><div class="footer-bottom"><span>Aryaman Srivastava<br><span class="footer-note">MSc Cyber Security · NTU Singapore</span></span><a href="#top">Back to top ↑</a></div></footer></body></html>

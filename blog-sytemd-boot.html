@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Replacing GRUB with systemd-boot — Aryaman Srivastava</title><meta name="description" content="Configure systemd-boot and kernel update hooks on a Debian-based system."><meta name="theme-color" content="#120f0c"><meta property="og:type" content="article"><meta property="og:title" content="Replacing GRUB with systemd-boot — Aryaman Srivastava"><meta property="og:description" content="Configure systemd-boot and kernel update hooks on a Debian-based system."><meta property="og:image" content="assets/social-preview.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Aryaman Srivastava — Systems &amp; Security"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="preload" href="assets/fonts/plex-400.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="styles.css?v=cab6c7b9e8f1"><link rel="stylesheet" href="editorial.css?v=21133b3192ae"><link rel="stylesheet" href="fonts.css?v=f7a471997d42"></head><body id="top"><a class="skip" href="#main">Skip to content</a><header class="wrap masthead"><a class="author-mark" href="index.html">Aryaman Srivastava<span aria-hidden="true">.</span></a><nav aria-label="Main navigation"><a href="index.html">Home</a><a href="projects.html">Projects</a><a href="blog.html" aria-current="page">Writing</a><a href="about.html">About</a><a href="resume.html">Resume</a></nav></header><main id="main" tabindex="-1"><header class="wrap article-header"><a class="text-link" href="blog.html">All writing <span aria-hidden="true">←</span></a><p class="article-meta"><time datetime="2024-09-10">10 September 2024</time><span>2 min read</span><span>Linux / grub / guides</span></p><h1>Replacing GRUB with systemd-boot</h1><p class="article-description">Configure systemd-boot and kernel update hooks on a Debian-based system.</p><p class="article-author">By Aryaman Srivastava</p></header><div class="wrap article-layout"><aside class="article-index"><p>In this article</p><nav aria-label="Article contents"><a href="#step-1-create-the-boot-config-file">Step 1: Create the Boot Config File</a><a href="#step-2-create-directory-for-kernel-configuration-files">Step 2: Create Directory for Kernel Configuration Files</a><a href="#step-3-install-the-boot-loader">Step 3: Install the Boot Loader</a><a href="#step-4-configure-systemd-boot-to-recognize-installed-kernel-images">Step 4: Configure systemd-boot to Recognize Installed Kernel Images</a><a href="#step-5-manually-add-the-kernel">Step 5: Manually Add the Kernel</a><a href="#optional-keep-grub-as-a-fallback">Optional: Keep GRUB as a Fallback</a></nav></aside><article class="article-prose"><h2 id="step-1-create-the-boot-config-file">Step 1: Create the Boot Config File</h2>
+<p>Start by creating a boot configuration file <code>/boot/efi/loader/loader.conf</code> with the following content:</p>
+<pre><code class="language-bash">default systemd
+timeout 1
+editor 1
+</code></pre>
+<h2 id="step-2-create-directory-for-kernel-configuration-files">Step 2: Create Directory for Kernel Configuration Files</h2>
+<p>Create the directory that will hold the configuration files for the installed kernel images:</p>
+<pre><code class="language-bash">mkdir -p /boot/efi/loader/entries
+</code></pre>
+<h2 id="step-3-install-the-boot-loader">Step 3: Install the Boot Loader</h2>
+<p>Install the boot loader with the <code>bootctl</code> command:</p>
+<pre><code class="language-bash">bootctl install --path=/boot/efi
+</code></pre>
+<p>You can check if the installation was successful with the <code>efibootmgr</code> command. This command is also useful to change the boot order and to delete old boot entries. The systemd-boot entry should show up as <strong>&quot;Linux Boot Manager&quot;</strong>.</p>
+<h2 id="step-4-configure-systemd-boot-to-recognize-installed-kernel-images">Step 4: Configure systemd-boot to Recognize Installed Kernel Images</h2>
+<p>Now systemd-boot is installed, but it does not know about the installed kernel images in the system.</p>
+<h3 id="step-4-1-create-the-post-install-script">Step 4.1: Create the Post-install Script</h3>
+<p>Use the <code>kernel-install</code> command to add and remove the kernel to and from the systemd-boot directory structure. Create a <code>/etc/kernel/postinst.d/zz-update-systemd-boot</code> file with the following content:</p>
+<pre><code class="language-bash">#!/bin/sh
+set -e
+
+/usr/bin/kernel-install add &quot;$1&quot; &quot;$2&quot;
+
+exit 0
+</code></pre>
+<h3 id="step-4-2-create-the-post-removal-script">Step 4.2: Create the Post-removal Script</h3>
+<p>Create a <code>/etc/kernel/postrm.d/zz-update-systemd-boot</code> file with the following content:</p>
+<pre><code class="language-bash">#!/bin/sh
+set -e
+
+/usr/bin/kernel-install remove &quot;$1&quot;
+
+exit 0
+</code></pre>
+<h2 id="step-5-manually-add-the-kernel">Step 5: Manually Add the Kernel</h2>
+<p>Create the <code>/boot/efi/&lt;machine-id&gt;</code> directory if it doesn't exist (you can find the machine-id from the file <code>/etc/machine-id</code>) and run <code>kernel-install</code> manually to force the initial install. The command will look like this:</p>
+<pre><code class="language-bash">kernel-install add `uname -r` /boot/vmlinuz-`uname -r`
+</code></pre>
+<p>Now you should see all installed kernel images in the systemd-boot menu.</p>
+<h2 id="optional-keep-grub-as-a-fallback">Optional: Keep GRUB as a Fallback</h2>
+<p>It is not necessary to remove GRUB, as long as it appears after systemd-boot in the output of <code>efibootmgr</code>. This also provides a useful fallback in case systemd-boot encounters any problems.</p>
+<div class="article-end"><a class="text-link" href="blog.html">Back to all writing <span aria-hidden="true">←</span></a></div></article></div></main><footer class="wrap site-footer"><div class="footer-contact"><h2>Say hello.</h2><a class="footer-email" href="mailto:mail@a4real.org">mail@a4real.org</a><div class="link-rail"><a class="text-link" href="https://www.linkedin.com/in/actuallyaryaman">LinkedIn <span aria-hidden="true">↗</span></a><a class="text-link" href="https://github.com/actuallyaryaman">GitHub <span aria-hidden="true">↗</span></a></div></div><div class="footer-bottom"><span>Aryaman Srivastava<br><span class="footer-note">MSc Cyber Security · NTU Singapore</span></span><a href="#top">Back to top ↑</a></div></footer></body></html>

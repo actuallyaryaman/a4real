@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Installing VoltageOS on OnePlus 12R / Ace 3 — Aryaman Srivastava</title><meta name="description" content="Firmware prerequisites, installation steps, and recovery notes for aston and astonc."><meta name="theme-color" content="#120f0c"><meta property="og:type" content="article"><meta property="og:title" content="Installing VoltageOS on OnePlus 12R / Ace 3 — Aryaman Srivastava"><meta property="og:description" content="Firmware prerequisites, installation steps, and recovery notes for aston and astonc."><meta property="og:image" content="assets/social-preview.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Aryaman Srivastava — Systems &amp; Security"><meta name="twitter:card" content="summary_large_image"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="preload" href="assets/fonts/plex-400.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="styles.css?v=cab6c7b9e8f1"><link rel="stylesheet" href="editorial.css?v=21133b3192ae"><link rel="stylesheet" href="fonts.css?v=f7a471997d42"></head><body id="top"><a class="skip" href="#main">Skip to content</a><header class="wrap masthead"><a class="author-mark" href="index.html">Aryaman Srivastava<span aria-hidden="true">.</span></a><nav aria-label="Main navigation"><a href="index.html">Home</a><a href="projects.html">Projects</a><a href="blog.html" aria-current="page">Writing</a><a href="about.html">About</a><a href="resume.html">Resume</a></nav></header><main id="main" tabindex="-1"><header class="wrap article-header"><a class="text-link" href="blog.html">All writing <span aria-hidden="true">←</span></a><p class="article-meta"><time datetime="2026-01">January 2026</time><span>1 min read</span><span>Android / voltageOS / guides</span></p><h1>Installing VoltageOS on OnePlus 12R / Ace 3</h1><p class="article-description">Firmware prerequisites, installation steps, and recovery notes for aston and astonc.</p><p class="article-author">By Aryaman Srivastava</p></header><div class="wrap article-layout"><aside class="article-index"><p>In this article</p><nav aria-label="Article contents"><a href="#prerequisites">Prerequisites:</a><a href="#clean-flash">Clean flash:</a><a href="#updating-to-a-newer-build-dirty-flash">Updating to a newer build (dirty flash):</a><a href="#if-sideloading-rom-gives-error-7">If sideloading rom gives error 7:</a><a href="#if-after-sideloading-rom-device-boots-to-bootloader">If after sideloading rom, device boots to bootloader:</a></nav></aside><article class="article-prose"><h2 id="prerequisites">Prerequisites:</h2>
+<ul>
+<li>Device must be running OxygenOS(12R)/ColorOS(ACE3) version 16.0.1.300,</li>
+<li>Flash the current build again using local install to ensure both slots have the same firmware. (Failing to do so will get you bricked)</li>
+</ul>
+<h2 id="clean-flash">Clean flash:</h2>
+<ul>
+<li>Reboot to bootloader</li>
+<li>Flash boot, init_boot, vendor_boot, dtbo and recovery images<ul>
+<li><code>fastboot flash boot boot.img</code></li>
+<li><code>fastboot flash init_boot init_boot.img</code></li>
+<li><code>fastboot flash vendor_boot vendor_boot.img</code></li>
+<li><code>fastboot flash dtbo dtbo.img</code></li>
+<li><code>fastboot flash recovery recovery.img</code></li>
+</ul>
+</li>
+<li>Reboot to recovery</li>
+<li>Sideload ROM zip<ul>
+<li><code>adb sideload voltage-*.zip</code></li>
+<li><code>adb sideload BiTGApps-arm64*.zip</code> (Optional)</li>
+<li><code>adb sideload microG-Installer-*.zip</code> (Optional)</li>
+</ul>
+</li>
+<li>Format data after sideload</li>
+<li>Reboot and voila!</li>
+</ul>
+<h2 id="updating-to-a-newer-build-dirty-flash">Updating to a newer build (dirty flash):</h2>
+<ul>
+<li>Sideload ROM zip</li>
+<li>Sideload Gapps zip</li>
+<li>Reboot and voila!</li>
+</ul>
+<h2 id="if-sideloading-rom-gives-error-7">If sideloading rom gives error 7:</h2>
+<ul>
+<li>Reboot to recovery</li>
+<li>Enter fastbootd</li>
+<li>fastboot wipe-super super_empty.img</li>
+<li>Enter recovery</li>
+<li>Sideload the rom zip</li>
+<li>Format data</li>
+<li>Reboot</li>
+</ul>
+<h2 id="if-after-sideloading-rom-device-boots-to-bootloader">If after sideloading rom, device boots to bootloader:</h2>
+<ul>
+<li>Do clean flash steps again</li>
+<li>When it asks for Yes/No prompt for installing additional packages, select Yes</li>
+<li>After device reboots recovery, sideload again.</li>
+<li>This time when it asks for Yes/No prompt for installing additional packages, select No</li>
+<li>Format and Reboot</li>
+</ul>
+<div class="article-end"><a class="text-link" href="blog.html">Back to all writing <span aria-hidden="true">←</span></a></div></article></div></main><footer class="wrap site-footer"><div class="footer-contact"><h2>Say hello.</h2><a class="footer-email" href="mailto:mail@a4real.org">mail@a4real.org</a><div class="link-rail"><a class="text-link" href="https://www.linkedin.com/in/actuallyaryaman">LinkedIn <span aria-hidden="true">↗</span></a><a class="text-link" href="https://github.com/actuallyaryaman">GitHub <span aria-hidden="true">↗</span></a></div></div><div class="footer-bottom"><span>Aryaman Srivastava<br><span class="footer-note">MSc Cyber Security · NTU Singapore</span></span><a href="#top">Back to top ↑</a></div></footer></body></html>

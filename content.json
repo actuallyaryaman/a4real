@@ -1,0 +1,469 @@
+{
+  "name": "Aryaman Srivastava",
+  "title": "Aryaman Srivastava — Systems & Security",
+  "description": "Aryaman Srivastava — MSc Cyber Security at NTU Singapore. Cryptography, threat-hunting tools, Android device maintenance, and UI/UX.",
+  "intro": "I study cybersecurity at NTU Singapore, maintain VoltageOS for the OnePlus 12R / Ace 3, and build security tools and interfaces.",
+  "heroNote": "Security, systems, and a few side quests.",
+  "projects": [
+    {
+      "id": "trace",
+      "title": "TRACE",
+      "category": "Agentic threat hunting",
+      "status": "NTU · SE6014 · Team project",
+      "summary": "From an unfamiliar log source to an investigation you can inspect.",
+      "context": "Python · Elasticsearch · MCP · Schema generation · UI/UX",
+      "body": [
+        "TRACE brings log onboarding, agent-assisted investigation, and independent evidence checks into one team project.",
+        "My work covers unknown-schema generation, validation and reuse, shared source onboarding, and the UI/UX. The interface follows a recorded SSH case through six stages, with source records, query receipts, and claim checks available to inspect.",
+        "The demo uses synthetic evidence. It supports analyst review; a verified citation is not a guarantee that an agent’s conclusion is correct."
+      ],
+      "url": "https://github.com/ay03/SE6014-Agentic-Threat-Hunting",
+      "linkLabel": "Project repository",
+      "secondaryUrl": "https://trace.a4real.org/",
+      "secondaryLabel": "View demo",
+      "variant": "trace",
+      "preview": "assets/projects/trace.webp",
+      "previewAlt": "TRACE interface showing the recorded SSH investigation, its six stages, source records, and evidence views.",
+      "previewCaption": "UI/UX by me · Recorded synthetic SSH case",
+      "roleSummary": "Schema generation · Source onboarding · UI/UX",
+      "demoUrl": "https://trace.a4real.org/",
+      "demoLabel": "View recorded demo",
+      "detailViewBox": "728 398 520 480",
+      "detailAlt": "Detail of TRACE’s recorded interface: onboarding stage, indexed SSH records and source status.",
+      "detailCaption": "Interface detail · Recorded synthetic SSH case"
+    },
+    {
+      "id": "hidden-colouring",
+      "title": "The Hidden Colouring",
+      "category": "Zero-knowledge proofs",
+      "status": "NTU · SE6003 · Academic project",
+      "summary": "How do you prove you know an answer without giving it away?",
+      "context": "Python · SHA-256 commitments · Graph three-colourability",
+      "body": [
+        "An interactive guide to zero-knowledge proofs, built around a graph-colouring puzzle. Seal a colouring, challenge one edge, then open just the two answers needed to check it.",
+        "The Python protocol backs the lesson with SHA-256 commitments, public-transcript verification and tamper checks. The Protocol Lab lets visitors inspect messages and test altered openings.",
+        "This is an educational implementation with explicit assumptions, not production cryptography. Tests and empirical results do not prove zero knowledge."
+      ],
+      "url": "https://zk.a4real.org/",
+      "linkLabel": "Try the field guide",
+      "secondaryUrl": "https://github.com/actuallyaryaman/the-hidden-colouring",
+      "secondaryLabel": "Project repository",
+      "variant": "colouring",
+      "preview": "assets/projects/hidden-colouring.webp",
+      "previewAlt": "The Hidden Colouring lesson with a six-vertex colouring puzzle and an explanation of the prover and verifier.",
+      "previewCaption": "The actual lesson · Six chapters and a Protocol Lab",
+      "roleSummary": "Interactive cryptography lesson · Python protocol",
+      "demoUrl": "https://zk.a4real.org/",
+      "demoLabel": "Try the lesson",
+      "detailViewBox": "280 390 560 395",
+      "detailAlt": "Detail of the actual Hidden Colouring puzzle, showing six vertices connected by edges and three colours.",
+      "detailCaption": "Puzzle detail · From the interactive lesson"
+    },
+    {
+      "id": "skopos",
+      "title": "Skopos",
+      "category": "Android privacy",
+      "status": "v0.1",
+      "summary": "An Android module for choosing which contacts each app gets to see.",
+      "context": "Kotlin · Android 16 · Vector / libxposed",
+      "detail": "Policies support all contacts, selected contacts, or an empty dataset. Unconfigured apps retain native behaviour. Policies are stored through the Vector daemon; the manager stores only local UI preferences.",
+      "url": "https://github.com/actuallyaryaman/Skopos",
+      "linkLabel": "See Skopos",
+      "notes": [
+        {
+          "label": "Scope",
+          "text": "Per-app contact visibility, with selected contacts kept durable across edits."
+        },
+        {
+          "label": "Privacy",
+          "text": "No runtime network dependency or telemetry, as documented in the repository."
+        },
+        {
+          "label": "Requirements",
+          "text": "Android 16 / API 36 and a rooted Vector/libxposed environment."
+        }
+      ],
+      "variant": "scope",
+      "body": [
+        "All contacts, a few selected contacts, or none. Skopos applies those choices through Vector/libxposed; apps you haven’t configured keep their normal behaviour.",
+        "Built for Android 16 and a rooted Vector/libxposed setup. No runtime network dependency or telemetry."
+      ]
+    },
+    {
+      "id": "android",
+      "title": "VoltageOS · OnePlus 12R",
+      "category": "Device maintenance",
+      "status": "Device maintainer",
+      "summary": "I’m the VoltageOS device maintainer for the OnePlus 12R / Ace 3.",
+      "context": "Android · Firmware · Fastboot · ADB",
+      "detail": "The installation notes cover matching firmware across both slots, flashing the boot and recovery images, ADB sideload, and recovery from installation errors. The linked device tree is a fork; it is not presented as an upstream merge.",
+      "url": "https://github.com/actuallyaryaman/android_device_oneplus_aston",
+      "linkLabel": "Device tree",
+      "secondaryUrl": "blog-instructions.html",
+      "secondaryLabel": "Installation guide",
+      "notes": [
+        {
+          "label": "Documentation",
+          "text": "Firmware prerequisites, clean and dirty flashes, and recovery paths."
+        },
+        {
+          "label": "Source",
+          "text": "The OnePlus 12R device tree is linked for inspection; individual maintenance commits are not yet catalogued."
+        }
+      ],
+      "variant": "device",
+      "body": [
+        "The device tree and my installation instructions are linked below."
+      ]
+    },
+    {
+      "id": "healthcare",
+      "title": "Healthcare Q&A with LoRA",
+      "category": "Language-model research",
+      "status": "VIT · Dec 2024 – Jun 2025",
+      "summary": "During my BTech, I fine-tuned small language models with LoRA for healthcare question answering.",
+      "context": "Small language models · LoRA · Evaluation",
+      "detail": "The supplied resume reports accuracy improving from 50.0% to 79.8%. Dataset, model, and evaluation-protocol details have not been supplied, so the figure is presented as a reported result rather than an independently reproduced benchmark.",
+      "url": "assets/aryaman-srivastava-resume.pdf",
+      "linkLabel": "In my resume",
+      "notes": [
+        {
+          "label": "Method",
+          "text": "Parameter-efficient fine-tuning with LoRA and iterative output evaluation."
+        },
+        {
+          "label": "Result",
+          "text": "50.0% → 79.8% Q&A accuracy, reported in the supplied resume."
+        }
+      ],
+      "variant": "research",
+      "body": [
+        "I worked on iterative experiments and output evaluation. My resume reports accuracy going from 50.0% to 79.8%; the dataset and evaluation write-up aren’t published here."
+      ]
+    }
+  ],
+  "education": "MSc Cyber Security",
+  "institution": "NTU Singapore",
+  "contactHeading": "Say hello.",
+  "contactText": "Want to talk about a project, swap Linux notes, or get in touch about an internship? You can reach me here.",
+  "email": "mail@a4real.org",
+  "resume": "assets/aryaman-srivastava-resume.pdf",
+  "profileLinks": [
+    {
+      "label": "LinkedIn",
+      "url": "https://www.linkedin.com/in/actuallyaryaman"
+    },
+    {
+      "label": "GitHub",
+      "url": "https://github.com/actuallyaryaman"
+    }
+  ],
+  "siteUrl": null,
+  "contactPlaceholder": "Contact email to be added.",
+  "resumePlaceholder": "Resume to be added.",
+  "unpublishedProject": {
+    "title": "Cryptographic dead man’s switch",
+    "status": "Not published: academic project requires supporting notes, contribution details, technical decisions, completion status, and an inspectable artifact."
+  },
+  "missingDetails": [
+    "Individual VoltageOS maintenance commits and release links",
+    "Homelab service inventory and architecture notes",
+    "Healthcare Q&A models, dataset, evaluation protocol, and paper/source link",
+    "Academic dead man’s switch project evidence",
+    "Optional hero images referenced by blog Markdown",
+    "Public site URL for canonical/social metadata"
+  ],
+  "blog": {
+    "heading": "Writing",
+    "intro": "Notes, guides, and things I’ve figured out."
+  },
+  "resumeSections": [
+    {
+      "title": "Education",
+      "items": [
+        {
+          "title": "MSc Cyber Security",
+          "organization": "Nanyang Technological University, Singapore",
+          "date": "Aug 2026 – Present",
+          "paragraphs": [
+            "Coursework: Cryptography, Application Security, Security Monitoring and Threat Detection."
+          ]
+        },
+        {
+          "title": "BTech in Computer Science and Engineering",
+          "organization": "Vellore Institute of Technology, India",
+          "date": "2021 – 2025",
+          "paragraphs": [
+            "Coursework: Operating Systems, DBMS, Computer Networks and Data Privacy."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Experience",
+      "items": [
+        {
+          "title": "Data Science Intern",
+          "organization": "Directorate General of Hydrocarbons · Ministry of Petroleum and Natural Gas, Government of India",
+          "date": "Jul – Nov 2025",
+          "paragraphs": [
+            "Fine-tuned language models using LoRA on oil and exploration data, applying parameter-efficient adaptation to domain-specific information.",
+            "Evaluated model outputs through iterative experiments to assess responses on oil and exploration data and guide subsequent fine-tuning."
+          ]
+        },
+        {
+          "title": "Software Development Intern",
+          "organization": "National e-Governance Division · Ministry of Electronics and Information Technology, Government of India",
+          "date": "Sep – Nov 2023",
+          "paragraphs": [
+            "Developed and improved frontend components for a production React Native application supporting government digital public-service workflows.",
+            "Contributed to application debugging and usability improvements; added asynchronous components to the React Native login screen to improve app responsiveness in low-connectivity areas."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Research & projects",
+      "items": [
+        {
+          "title": "TRACE — Agentic Threat Hunting",
+          "organization": "Nanyang Technological University",
+          "date": "Oct 2026",
+          "paragraphs": [
+            "Implemented Python schema generation, validation and reuse for unfamiliar log formats, supporting investigations in a team-built, ELK-based agentic threat-hunting system.",
+            "Developed secure source onboarding with duplicate-safe ingestion and audit logs; tested Elasticsearch and MCP integration for threat-hunting investigations."
+          ],
+          "url": "https://github.com/ay03/SE6014-Agentic-Threat-Hunting"
+        },
+        {
+          "title": "The Hidden Colouring — Zero-Knowledge Proofs",
+          "organization": "Nanyang Technological University",
+          "date": "Oct 2026",
+          "paragraphs": [
+            "Built a Python-backed interactive demonstration of graph three-colourability using SHA-256 commitments and challenge-response verification.",
+            "Implemented public-transcript verification and tamper tests to illustrate hidden-witness privacy and the risks of reusing commitments."
+          ],
+          "url": "https://github.com/actuallyaryaman/the-hidden-colouring"
+        },
+        {
+          "title": "Healthcare Q&A language-model research",
+          "organization": "Vellore Institute of Technology",
+          "date": "Dec 2024 – Jun 2025",
+          "paragraphs": [
+            "Fine-tuned small language models using LoRA for healthcare question answering, designing and evaluating iterative experiments.",
+            "The supplied resume reports Q&A accuracy improving from 50.0% to 79.8%, a 29.8 percentage-point gain."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Open source & leadership",
+      "items": [
+        {
+          "title": "Core Committee Member",
+          "organization": "Linux User Group VIT",
+          "date": "Mar 2022 – Jun 2025",
+          "paragraphs": [
+            "Led Linux administration workshops, troubleshot installations, and collaborated on accepted open-source pull requests."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Certifications",
+      "items": [
+        {
+          "title": "AWS Certified Solutions Architect – Associate",
+          "organization": "AWS",
+          "date": "Mar 2026",
+          "paragraphs": []
+        },
+        {
+          "title": "Machine Learning Specialization",
+          "organization": "DeepLearning.AI",
+          "date": "2023",
+          "paragraphs": []
+        }
+      ]
+    },
+    {
+      "title": "Technical skills",
+      "items": [
+        {
+          "title": "Cybersecurity",
+          "organization": "",
+          "date": "",
+          "paragraphs": [
+            "Application and network security, cryptography, security monitoring, data privacy."
+          ]
+        },
+        {
+          "title": "Software development",
+          "organization": "",
+          "date": "",
+          "paragraphs": [
+            "Python, Kotlin, Java, JavaScript, SQL/DBMS, React Native, REST APIs, Bash, Git."
+          ]
+        },
+        {
+          "title": "Cloud and tools",
+          "organization": "",
+          "date": "",
+          "paragraphs": [
+            "AWS, Linux, Docker, GitHub Actions; Microsoft Office (Excel, Word, PowerPoint)."
+          ]
+        },
+        {
+          "title": "AI/LLM and analytics",
+          "organization": "",
+          "date": "",
+          "paragraphs": [
+            "Language-model evaluation, LoRA fine-tuning, experiment design, Python data analysis."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Soft skills",
+      "items": [
+        {
+          "title": "Communication & collaboration",
+          "organization": "",
+          "date": "",
+          "paragraphs": [
+            "Technical communication, evidence-based reporting, workshop facilitation, teamwork and problem-solving."
+          ]
+        }
+      ]
+    }
+  ],
+  "resumeSource": "references/Aryaman_Srivastava.pdf",
+  "home": {
+    "introDetail": "Some days that means cloud security research. Other days, Linux troubleshooting, a new playlist, or a detour into philosophy.",
+    "selectedHeading": "A few things I’ve made",
+    "experienceHeading": "A little background",
+    "writingHeading": "From my notebook",
+    "aboutHeading": "A bit about me",
+    "about": "I like working close to the system: maintaining Android ROMs, contributing Linux fixes, and looking after my own infrastructure. Studying security gives me another way to think about those same systems.",
+    "aboutSecond": "Before NTU, I worked on React Native components at the National e-Governance Division and fine-tuned language models at the Directorate General of Hydrocarbons. These days, I’m interested in AI security, cloud security, and GRC.",
+    "workLabel": "Explore the work",
+    "resumeLabel": "The resume version",
+    "greeting": "Hi, I’m Aryaman.",
+    "sideHeading": "Away from the keyboard",
+    "sideText": "After Hours",
+    "sideLinks": [
+      {
+        "title": "Browse my playlists",
+        "description": "Hip-hop, indie, rock, and a little of everything.",
+        "url": "blog-playlist.html"
+      }
+    ],
+    "selectedIds": [
+      "trace",
+      "hidden-colouring"
+    ],
+    "sideDescription": "Chill / late night — one of the playlists in my collection.",
+    "greetingLines": [
+      "Hi, I’m",
+      "Aryaman."
+    ],
+    "workFootnote": "More from the workbench",
+    "workLinks": [
+      {
+        "label": "VoltageOS · OnePlus 12R",
+        "url": "projects.html#android"
+      },
+      {
+        "label": "Skopos",
+        "url": "projects.html#skopos"
+      }
+    ],
+    "heroDetail": "On TRACE, I work on schema generation, shared source onboarding, and UI/UX."
+  },
+  "contributions": [
+    {
+      "title": "ASUS Vivobook fan-control configuration",
+      "repo": "nbfc-linux / nbfc-linux",
+      "status": "Merged",
+      "date": "Mar 2025",
+      "summary": "Added the Vivobook S15 S5506MA configuration, including CPU and GPU fan registers and temperature thresholds.",
+      "url": "https://github.com/nbfc-linux/nbfc-linux/pull/187",
+      "detail": "Merged 10 March 2025; verified pull-request state and configuration diff."
+    },
+    {
+      "title": "Automatic laptop-model detection",
+      "repo": "ThatOneCalculator / asus-5606-fan-state",
+      "status": "Merged",
+      "date": "Jul–Aug 2025",
+      "summary": "Selected the ASUS fan-control register from /sys/class/dmi/id/product_name, replacing the manual-edit workflow. A follow-up corrected the detected model name.",
+      "url": "https://github.com/ThatOneCalculator/asus-5606-fan-state/pull/7",
+      "secondaryUrl": "https://github.com/ThatOneCalculator/asus-5606-fan-state/pull/9",
+      "detail": "Both PRs were merged; verified implementation and follow-up."
+    },
+    {
+      "title": "Brave / Origin extension for Vicinae",
+      "repo": "vicinaehq / extensions",
+      "status": "Open PR",
+      "date": "Sep 2026",
+      "summary": "Submitted commands for searching bookmarks, history, tabs, and the web, plus opening browser windows. Reads local browser profiles and discovers the debugging endpoint for tab controls.",
+      "url": "https://github.com/vicinaehq/extensions/pull/396",
+      "detail": "Open, not merged, as of 14 October 2026. Verified changed files and extension README."
+    }
+  ],
+  "otherWork": [
+    {
+      "id": "arch",
+      "title": "Arch setup utility",
+      "text": "A menu-driven Bash script for package lists, shell preferences, and system setup.",
+      "url": "https://github.com/actuallyaryaman/Arch_Setup",
+      "label": "Source"
+    },
+    {
+      "id": "fuelish",
+      "title": "Fuelish",
+      "text": "A fuel-price web app built with Asvin, using HTML, CSS, JavaScript, and Leaflet.",
+      "url": "https://github.com/Doofenshmirtz-Evil-Incorp/Fuelish",
+      "label": "Repository"
+    },
+    {
+      "id": "homelab",
+      "title": "Self-hosted homelab",
+      "text": "My own infrastructure for hands-on systems work. The service inventory and network notes are not published yet.",
+      "url": null,
+      "label": null
+    },
+    {
+      "id": "opensource",
+      "title": "Linux User Group VIT",
+      "text": "Core Committee Member, March 2022–June 2025. Linux administration workshops and installation troubleshooting.",
+      "url": "assets/aryaman-srivastava-resume.pdf",
+      "label": "Resume"
+    }
+  ],
+  "githubReview": {
+    "account": "actuallyaryaman",
+    "reviewed": "2026-10-14",
+    "method": "gh api --method GET only",
+    "mergedAuthorPRs": 49,
+    "openAuthorPRs": 2,
+    "selection": "Merged Linux hardware support changes, open Vicinae extension, and Android/privacy/security repositories. Small README edits and historical configuration submissions were not promoted as major features."
+  },
+  "retiredPages": [
+    "linkedin.html",
+    "blog-ataraxia.html",
+    "now.html"
+  ],
+  "about": {
+    "heading": "About",
+    "intro": "I like working close to the system.",
+    "paragraphs": [
+      "A lot of my learning starts with something I use: a phone, a Linux machine, or a service in my homelab. Maintaining those systems gives me practical questions to bring back to my security studies.",
+      "I’m interested in both the hands-on work and the decisions around it: how systems are operated, how risks are assessed, and what changes when AI becomes part of the system. That’s where my interests in cybersecurity, GRC, and AI security meet."
+    ]
+  },
+  "resumeEmails": [
+    "mail@a4real.org",
+    "asri237@proton.me"
+  ],
+  "resumeProfile": "Focused on cybersecurity, with practical experience building threat-hunting log workflows and cryptographic demonstrations. Combines Python implementation and integration testing with language-model research, Linux troubleshooting and clear technical communication to investigate security problems."
+}

@@ -1,0 +1,16 @@
+dist/
+output/
+.playwright-cli/
+__pycache__/
+
+# Local reference material; publishable Markdown remains versioned.
+references/*
+!references/blog/
+!references/linkedin/
+.venv/
+.env
+.env.*
+*.pyc
+
+# Local repository analysis artifacts.
+graphify-out/

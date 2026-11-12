@@ -1,0 +1,11 @@
+:root {
+ color-scheme: dark;
+ --color-paper: oklch(17% .008 70); --color-ink: oklch(94.5% .018 85); --color-red: oklch(62% .22 29); --color-teal: oklch(76% .09 190); --color-muted: oklch(75% .018 85); --color-line: oklch(42% .014 70); --color-surface: oklch(22% .008 70); --color-on-accent: oklch(17% .008 70); --color-white: oklch(98% .012 85);
+ --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif; --font-body: 'IBM Plex Sans', Arial, sans-serif; --font-mono: 'Courier New', monospace;
+ --space-sm: 8px; --space-md: 16px; --space-lg: 32px; --space-xl: 64px;
+ --ease-out: cubic-bezier(.2,.8,.2,1); --dur-fast: 120ms; --rule-thick: 3px;
+}
+
+:root { --color-sheet: oklch(91% .035 85); --color-sheet-ink: oklch(23% .018 70); --color-sheet-muted: oklch(43% .018 70); --color-sheet-rule: oklch(72% .025 85); --color-signal: oklch(72% .17 35); }
+
+:root { --color-focus: var(--color-teal); --radius-control: 2px; --text-reading: 17px; --text-reading-mobile: 16px; }

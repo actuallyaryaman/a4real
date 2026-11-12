@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "index.html",
+    "projects.html",
+    "blog.html",
+    "resume.html",
+    "about.html",
+    "writing-workbench.html",
+    "writing-off-the-clock.html",
+    "blog-arch-setup.html",
+    "blog-pif-guide.html",
+    "blog-playlist.html",
+    "blog-instructions.html",
+    "blog-sytemd-boot.html",
+    "blog-fuelish.html"
+  ],
+  "posts": [
+    {
+      "slug": "arch-setup",
+      "source": "references/blog/2026-03-31-arch-setup.md",
+      "title": "Arch Setup Script"
+    },
+    {
+      "slug": "pif-guide",
+      "source": "references/blog/2026-02-11-pif-guide.md",
+      "title": "Integrity Box + TrickyStore + HMA-OSS Setup Guide"
+    },
+    {
+      "slug": "playlist",
+      "source": "references/blog/2026-04-01-playlists.md",
+      "title": "Playlists"
+    },
+    {
+      "slug": "instructions",
+      "source": "references/blog/2026-01-01-instructions.md",
+      "title": "Installing VoltageOS on OnePlus 12R / Ace 3"
+    },
+    {
+      "slug": "sytemd-boot",
+      "source": "references/blog/2024-09-24-systemd-boot.md",
+      "title": "Replacing GRUB with systemd-boot"
+    },
+    {
+      "slug": "fuelish",
+      "source": "references/blog/2023-10-03-fuelish.md",
+      "title": "Fuelish"
+    }
+  ],
+  "warnings": [
+    "2023-10-03-fuelish.md: hero image not supplied (../../assets/fuelish.png); omitted",
+    "2024-09-24-systemd-boot.md: hero image not supplied (../../assets/systemd-boot.jpeg); omitted",
+    "2026-01-01-instructions.md: hero image not supplied (../../assets/vos-instructions.jpeg); omitted",
+    "2026-02-11-pif-guide.md: hero image not supplied (../../assets/pif.jpeg); omitted",
+    "2026-03-31-arch-setup.md: hero image not supplied (../../assets/arch-setup.jpeg); omitted",
+    "2026-04-01-playlists.md: hero image not supplied (../../assets/playlists.jpg); omitted"
+  ]
+}
