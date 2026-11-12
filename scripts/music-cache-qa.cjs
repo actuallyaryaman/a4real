@@ -18,7 +18,7 @@ const assert=require('node:assert/strict');
  const origin='https://music.example.test',endpoint=origin+'/api/now-playing',base='http://127.0.0.1:8014';
  const source=fs.readFileSync('dist/index.html','utf8').replace(/data-endpoint="[^"]*"/,`data-endpoint="${endpoint}"`);
  const image=fs.readFileSync('tests/fixtures/music-art.png');
- const track={status:'playing',checkedAt:new Date().toISOString(),track:{title:'Paper Rooms',artist:'Aster Vale',album:'Evening Notes',artwork:'https://lastfm.freetls.fastly.net/i/u/300x300/fixture.jpg',appleMusicUrl:'https://music.apple.com/sg/album/123?i=456',appleMusicMatched:true}};
+ const track={status:'playing',checkedAt:new Date().toISOString(),track:{title:'Paper Rooms',artist:'Aster Vale',album:'Evening Notes',artwork:'https://lastfm.freetls.fastly.net/i/u/300x300/fixture.jpg',appleMusicUrl:'https://music.apple.com/in/album/123?i=456',appleMusicMatched:true}};
  const key='on-rotation:v2:'+origin;
  const browser=process.env.PORTFOLIO_CDP ? await playwright.chromium.connectOverCDP(process.env.PORTFOLIO_CDP) : await playwright.chromium.launch({executablePath:process.env.PORTFOLIO_BROWSER,headless:true});
  const server=spawn('python3',['-m','http.server','8014','--bind','127.0.0.1','--directory','dist'],{stdio:'ignore'});
@@ -62,7 +62,7 @@ const assert=require('node:assert/strict');
    await page.route(endpoint,async r=>{calls++;if(scenario!=='enriching')await new Promise(r=>setTimeout(r,300));return r.fulfill({contentType:'application/json',body:JSON.stringify({...track,enriching:scenario==='enriching',track:{...track.track,artwork:null,appleMusicUrl:'javascript:alert(1)'}})}).catch(()=>{});});
    await page.goto(base+'/');
    if(scenario!=='enriching'){assert.equal(await page.locator('[data-music-status]').textContent(),'Recent listening');assert(!(await page.locator('[data-music]').textContent()).includes('unavailable'));}
-   await page.locator('[data-state=playing]').waitFor();assert((await page.locator('[data-music-track]').getAttribute('href')).startsWith('https://music.apple.com/sg/search?term='));
+   await page.locator('[data-state=playing]').waitFor();assert((await page.locator('[data-music-track]').getAttribute('href')).startsWith('https://music.apple.com/in/search?term='));
    if(scenario==='enriching'){await page.waitForTimeout(5100);assert.equal(calls,3,'Only two early refreshes');}
    report.push({scenario,passed:true});await context.close();
   }

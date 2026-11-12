@@ -18,7 +18,7 @@ const assert=require('node:assert/strict');
  const base='http://127.0.0.1:8015',key='on-rotation:v2:'+base,output='output/playwright/music/obscura';fs.mkdirSync(output,{recursive:true});
  let mode='playing',pending,finish,calls=0;
  const liveFile=process.env.MUSIC_QA_LIVE_JSON;const live=liveFile?JSON.parse(fs.readFileSync(liveFile,'utf8')):null;
- const payload=()=>{if(mode==='live')return live;const data=normalizeRecentTracks(lastfmFixture(['error','slow','enriching'].includes(mode)?'playing':mode),'fixture-listener');if(data.track){data.track.artwork=null;data.track.appleMusicUrl='https://music.apple.com/sg/album/123?i=456';data.track.appleMusicMatched=true;}if(mode==='enriching')data.enriching=true;return data;};
+ const payload=()=>{if(mode==='live')return live;const data=normalizeRecentTracks(lastfmFixture(['error','slow','enriching'].includes(mode)?'playing':mode),'fixture-listener');if(data.track){data.track.artwork=null;data.track.appleMusicUrl='https://music.apple.com/in/album/123?i=456';data.track.appleMusicMatched=true;}if(mode==='enriching')data.enriching=true;return data;};
  const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.woff2':'font/woff2','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png','.pdf':'application/pdf'};
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,base);
@@ -40,8 +40,8 @@ const assert=require('node:assert/strict');
     assert((await page.evaluate(()=>document.documentElement.scrollWidth))<=width,`${width}: overflow`);
     assert.equal(await page.locator('.music-card a[href*="last.fm"]').count(),0);
     if(state!=='empty'){
-     assert.equal(await page.locator('[data-music-track]').getAttribute('href'),'https://music.apple.com/sg/album/123?i=456');
-     assert.equal(await page.locator('[data-music-art-link]').getAttribute('href'),'https://music.apple.com/sg/album/123?i=456');
+     assert.equal(await page.locator('[data-music-track]').getAttribute('href'),'https://music.apple.com/in/album/123?i=456');
+     assert.equal(await page.locator('[data-music-art-link]').getAttribute('href'),'https://music.apple.com/in/album/123?i=456');
      await page.locator('[data-music-track]').focus();assert(await page.locator('[data-music-track]').evaluate(e=>e===document.activeElement));
     }
     await page.screenshot({path:`${output}/${width}-${state}.png`,fullPage:true});await card.screenshot({path:`${output}/card-${width}-${state}.png`});

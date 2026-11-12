@@ -13,9 +13,9 @@ function appleURL(track) {
   try {
     const url = new URL(track.appleMusicUrl);
     if (url.protocol === 'https:' && url.hostname === 'music.apple.com' && !url.username && !url.password && !url.port && !url.hash &&
-        (/^\/sg\/album\/[1-9]\d{0,15}$/.test(url.pathname) && /^[1-9]\d{0,15}$/.test(url.searchParams.get('i')) && [...url.searchParams.keys()].every(k => k === 'i'))) return {url:url.href,matched:true};
+        (/^\/in\/album\/[1-9]\d{0,15}$/.test(url.pathname) && /^[1-9]\d{0,15}$/.test(url.searchParams.get('i')) && [...url.searchParams.keys()].every(k => k === 'i'))) return {url:url.href,matched:true};
   } catch {}
-  return {url:'https://music.apple.com/sg/search?term='+encodeURIComponent(text(track.artist)+' '+text(track.title)),matched:false};
+  return {url:'https://music.apple.com/in/search?term='+encodeURIComponent(text(track.artist)+' '+text(track.title)),matched:false};
 }
 const text = (value, fallback = '') => typeof value === 'string' ? Array.from(value).slice(0, 240).join('') || fallback : fallback;
 

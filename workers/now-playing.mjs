@@ -1,4 +1,4 @@
-const BUILD = 'on-rotation-6';
+const BUILD = 'on-rotation-7';
 class LookupFailure extends Error {
   constructor(kind, details = {}) { super(kind); this.kind = kind; this.details = details; }
 }
@@ -62,7 +62,7 @@ export function albumArtworkCandidates(payload, track) {
   ).slice(0, 3).map(item => ({ artwork: safeArtworkUrl(item.cover_medium), artworkSource: 'deezer', artworkPage: `https://www.deezer.com/album/${item.id}` }));
 }
 export function appleMusicSearch(track) {
-  return `https://music.apple.com/sg/search?${new URLSearchParams({ term: `${track.artist} ${track.title}` })}`;
+  return `https://music.apple.com/in/search?${new URLSearchParams({ term: `${track.artist} ${track.title}` })}`;
 }
 export function appleMusicCandidate(payload, track) {
   if (!Array.isArray(payload?.results) || track.title === 'Unknown track' || track.artist === 'Unknown artist') return null;
@@ -73,7 +73,7 @@ export function appleMusicCandidate(payload, track) {
     Number.isSafeInteger(item.collectionId) && item.collectionId > 0
   ).sort((a, b) => Number(matchingLabel(b.collectionName) === matchingLabel(track.album)) - Number(matchingLabel(a.collectionName) === matchingLabel(track.album)));
   const found = matches[0];
-  return found ? `https://music.apple.com/sg/album/${found.collectionId}?i=${found.trackId}` : null;
+  return found ? `https://music.apple.com/in/album/${found.collectionId}?i=${found.trackId}` : null;
 }
 function profile(username) { return `https://www.last.fm/user/${encodeURIComponent(username)}`; }
 function unavailable(username, now) {
@@ -199,7 +199,7 @@ export function createMusicService({ fetchImpl = (...args) => fetch(...args), ca
       try {
         if (track.title !== 'Unknown track' && track.artist !== 'Unknown artist') {
           const url = new URL('https://itunes.apple.com/search');
-          url.search = new URLSearchParams({ term: `${track.artist} ${track.title}`, entity: 'song', media: 'music', country: 'sg', limit: '10' });
+          url.search = new URLSearchParams({ term: `${track.artist} ${track.title}`, entity: 'song', media: 'music', country: 'in', limit: '10' });
           const result = await timed(url.href, 131072, 'application/json', Math.min(timeoutMs, 2000));
           const payload = JSON.parse(new TextDecoder().decode(result.bytes));
           if (!Array.isArray(payload?.results)) throw new Error('Invalid catalog');

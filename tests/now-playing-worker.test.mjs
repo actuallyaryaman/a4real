@@ -188,7 +188,7 @@ test('diagnostics identify Last.fm error codes without exposing keys, URLs or up
   const records=[];
   const h=harness(async()=>new Response(JSON.stringify({error:10,message:ENV.LASTFM_API_KEY+' private message'}),{status:403,headers:{'Content-Type':'application/json'}}),{logger:{warn:(...args)=>records.push(args)}});
   const response=await h.fetch();
-  assert.equal(response.headers.get('x-music-build'),'on-rotation-6');
+  assert.equal(response.headers.get('x-music-build'),'on-rotation-7');
   assert.equal((await response.json()).status,'unavailable');
   assert.equal(records[0][1].kind,'lastfm_error');
   assert.equal(records[0][1].lastfmCode,10);
@@ -200,8 +200,8 @@ test('denied-origin diagnostics and response identify the deployed code without 
   const h=harness(async()=>jsonResponse(payload()),{logger:{warn:(...args)=>records.push(args)}});
   const response=await h.fetch(request('/api/now-playing',{headers:{Origin:'https://www.a4real.org'}}),{...ENV,PORTFOLIO_ORIGINS:'https://a4real.org'});
   assert.equal(response.status,403);
-  assert.equal(response.headers.get('x-music-build'),'on-rotation-6');
-  assert.deepEqual(records[0][1],{build:'on-rotation-6',kind:'origin_denied',apexAllowed:true,wwwAllowed:false});
+  assert.equal(response.headers.get('x-music-build'),'on-rotation-7');
+  assert.deepEqual(records[0][1],{build:'on-rotation-7',kind:'origin_denied',apexAllowed:true,wwwAllowed:false});
 });
 
 
@@ -362,7 +362,7 @@ function backgroundContext() {
   return { promises, waitUntil(promise) { promises.push(promise); }, async drain() { for (let i = 0; i < promises.length; i++) await promises[i]; } };
 }
 test('Apple links require exact title and artist, prefer the matching album, and ignore supplied URLs', () => {
-  assert.equal(appleMusicCandidate({ results: [appleItem({ collectionName: 'Other', trackId: 1 }), appleItem({ trackViewUrl: 'javascript:alert(1)' })] }, fixtureTrack), 'https://music.apple.com/sg/album/456?i=123');
+  assert.equal(appleMusicCandidate({ results: [appleItem({ collectionName: 'Other', trackId: 1 }), appleItem({ trackViewUrl: 'javascript:alert(1)' })] }, fixtureTrack), 'https://music.apple.com/in/album/456?i=123');
   assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: 'Fixture track (Live)' }), appleItem({ artistName: 'Fixture artist Tribute' })] }, fixtureTrack), null);
   for (const field of ['trackId', 'collectionId']) for (const value of ['123', -1, 0, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, '123<script>']) {
     assert.equal(appleMusicCandidate({ results: [appleItem({ [field]: value })] }, fixtureTrack), null);
@@ -372,9 +372,9 @@ test('Apple links require exact title and artist, prefer the matching album, and
 test('Apple matching preserves remix, live and featured qualifiers', () => {
   for (const suffix of [' (Live)', ' (Remix)', ' (feat. Guest)']) {
     assert.equal(appleMusicCandidate({ results: [appleItem()] }, { ...fixtureTrack, title: fixtureTrack.title + suffix }), null);
-    assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: fixtureTrack.title + suffix })] }, { ...fixtureTrack, title: fixtureTrack.title + suffix }), 'https://music.apple.com/sg/album/456?i=123');
+    assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: fixtureTrack.title + suffix })] }, { ...fixtureTrack, title: fixtureTrack.title + suffix }), 'https://music.apple.com/in/album/456?i=123');
   }
-  assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: 'Ｆixture track' })] }, fixtureTrack), 'https://music.apple.com/sg/album/456?i=123');
+  assert.equal(appleMusicCandidate({ results: [appleItem({ trackName: 'Ｆixture track' })] }, fixtureTrack), 'https://music.apple.com/in/album/456?i=123');
 });
 test('Apple catalog metadata is bounded and cached independently of Last.fm snapshots', async () => {
   let appleCalls = 0;
@@ -383,13 +383,13 @@ test('Apple catalog metadata is bounded and cached independently of Last.fm snap
     if (parsed.hostname === 'itunes.apple.com') {
       appleCalls++;
       assert.equal(parsed.searchParams.get('term'), 'Fixture artist Fixture track');
-      for (const [key, value] of Object.entries({ entity: 'song', media: 'music', country: 'sg', limit: '10' })) assert.equal(parsed.searchParams.get(key), value);
+      for (const [key, value] of Object.entries({ entity: 'song', media: 'music', country: 'in', limit: '10' })) assert.equal(parsed.searchParams.get(key), value);
       return jsonResponse({ results: [appleItem()] });
     }
     return jsonResponse(payload(raw()));
   }, { appleMusicLookup: true });
   const data = await (await h.fetch()).json();
-  assert.equal(data.track.appleMusicMatched, true); assert.equal(data.track.appleMusicUrl, 'https://music.apple.com/sg/album/456?i=123');
+  assert.equal(data.track.appleMusicMatched, true); assert.equal(data.track.appleMusicUrl, 'https://music.apple.com/in/album/456?i=123');
   h.advance(86400000); await h.fetch(); assert.equal(appleCalls, 1);
   h.advance(30 * 86400000); await h.fetch(); assert.equal(appleCalls, 2);
 });
@@ -470,7 +470,7 @@ test('Apple timeouts fail softly without delaying the production metadata respon
   await ctx.drain();
   const settled = await (await h.fetch()).json();
   assert.equal(settled.enriching, false); assert.equal(settled.status, 'recent');
-  assert.equal(settled.track.appleMusicMatched, false); assert.match(settled.track.appleMusicUrl, /^https:\/\/music\.apple\.com\/sg\/search\?/);
+  assert.equal(settled.track.appleMusicMatched, false); assert.match(settled.track.appleMusicUrl, /^https:\/\/music\.apple\.com\/in\/search\?/);
 });
 test('optional Apple lookups coalesce across concurrent listeners', async () => {
   let calls = 0, release;

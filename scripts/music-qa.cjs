@@ -54,8 +54,8 @@ const assert=require('node:assert/strict');
     if(width<=700)assert(box.y>=(await page.locator('.home-work').boundingBox()).y+(await page.locator('.home-work').boundingBox()).height);
     assert.equal(await page.locator('.music-card script,.music-card a[href^="javascript:"]').count(),0);
     assert.equal(await page.locator('.music-links a').last().evaluate(el=>getComputedStyle(el).transitionDuration),'0s');
-    if(state==='catalog'){assert((await page.locator('[data-music-art-link]').getAttribute('href')).startsWith('https://music.apple.com/sg/search?term='));assert((await page.locator('[data-music-art-link]').getAttribute('aria-label')).includes('on Apple Music'));await page.locator('[data-music-art-link]').focus();assert(await page.locator('[data-music-art-link]').evaluate(el=>el===document.activeElement));}
-    if(state==='malicious'){assert((await page.locator('[data-music-track]').getAttribute('href')).startsWith('https://music.apple.com/sg/search?term='));assert.equal(await page.locator('[data-music-art]').getAttribute('src'),null);}
+    if(state==='catalog'){assert((await page.locator('[data-music-art-link]').getAttribute('href')).startsWith('https://music.apple.com/in/search?term='));assert((await page.locator('[data-music-art-link]').getAttribute('aria-label')).includes('on Apple Music'));await page.locator('[data-music-art-link]').focus();assert(await page.locator('[data-music-art-link]').evaluate(el=>el===document.activeElement));}
+    if(state==='malicious'){assert((await page.locator('[data-music-track]').getAttribute('href')).startsWith('https://music.apple.com/in/search?term='));assert.equal(await page.locator('[data-music-art]').getAttribute('src'),null);}
     if(state==='stale')assert(!(await page.locator('[data-music-status]').textContent()).includes('Now playing'));
     const fullPage=[375,768,1440].includes(width)&&['playing','recent','error'].includes(state);
     await (fullPage?page:card).screenshot({path:path.join(output,`${width}-${state}.png`),...(fullPage?{fullPage:true}:{})});

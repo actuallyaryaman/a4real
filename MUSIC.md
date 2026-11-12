@@ -96,7 +96,7 @@ After your manual deployment, confirm JSON and SVG over the public Worker URL, t
 
 ## Diagnose a deployed unavailable response
 
-The current Worker adds `X-Music-Build: on-rotation-6` to JSON/SVG responses, including denied-origin responses. This confirms which source is running. If the dashboard settings look correct but the endpoint still fails, paste the latest `workers/now-playing.mjs` into Edit code and deploy it; the existing secrets remain in Worker settings.
+The current Worker adds `X-Music-Build: on-rotation-7` to JSON/SVG responses, including denied-origin responses. This confirms which source is running. If the dashboard settings look correct but the endpoint still fails, paste the latest `workers/now-playing.mjs` into Edit code and deploy it; the existing secrets remain in Worker settings.
 
 Open the deployed Worker's live logs, request `/api/now-playing`, and inspect a **Music diagnostic** record. The record contains only a fixed failure category, numeric upstream status/error code, or booleans indicating missing configuration/allowed origins. It never logs the API key, upstream URL, raw error message, or listening metadata. Repeated identical diagnostics within the same isolate are limited to once per minute. Allow 60 seconds between checks for the edge cache and diagnostic cooldown to expire.
 
@@ -133,7 +133,7 @@ The homepage embeds its small music module directly, avoiding another script req
 
 The Worker returns core Last.fm metadata immediately, then uses `ctx.waitUntil` for artwork and Apple link enrichment. The portfolio makes at most two early two-second followups for pending enrichment or a stale edge snapshot, then returns to its normal 60-second visible-tab interval. Edge caching is evictable, not durable storage.
 
-Title, artwork and the Apple Music footer link share the same destination. Exact title/artist catalog matches use validated numeric Apple Music track links in the Singapore storefront; album matches receive preference. Without a verified match, the link is an encoded Apple Music search and its accessible label says Find. No card link redirects to a Last.fm profile. Apple catalog matches cache for 30 days, misses for one day, and transient failures for five minutes. Search calls are bounded to two seconds, limited to ten results, and never supply artwork or playback status.
+Title, artwork and the Apple Music footer link share the same destination. Exact title/artist catalog matches use validated numeric Apple Music track links in the India storefront; album matches receive preference. Without a verified match, the link is an encoded Apple Music search and its accessible label says Find. No card link redirects to a Last.fm profile. Apple catalog matches cache for 30 days, misses for one day, and transient failures for five minutes. Search calls are bounded to two seconds, limited to ten results, and never supply artwork or playback status.
 
 Run `node scripts/music-cache-qa.cjs` for the focused stored-rendering, offline retention, Apple destinations, corrupt/expired/blocked storage and bounded enrichment checks. Set `PORTFOLIO_BROWSER` to the installed Chromium-compatible browser executable when needed.
 
